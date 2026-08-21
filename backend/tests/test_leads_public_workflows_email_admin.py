@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.api.deps import get_current_user
 from app.main import app
+from app.models.enums import UserRole
 from app.services.email_service import EmailService
 from app.services.lead_service import LeadService
 from app.services.public_lead_service import PublicLeadService
