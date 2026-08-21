@@ -5,7 +5,6 @@ from uuid import uuid4
 
 from app.api.deps import get_current_user
 from app.main import app
-from app.models.enums import UserRole, WorkflowRunStatus
 from app.services.email_service import EmailService
 from app.services.lead_service import LeadService
 from app.services.public_lead_service import PublicLeadService
@@ -72,18 +71,23 @@ def test_public_lead_form(client, monkeypatch):
 
 
 def test_workflow_webhook_trigger(client, monkeypatch):
-    run_id = str(uuid4())
-    workflow_id = str(uuid4())
+    run_id = uuid4()
     monkeypatch.setattr(
         WorkflowService,
         "execute_public_webhook",
-        lambda self, key, payload: {"workflow_id": workflow_id, "run_id": run_id, "status": "COMPLETED"},
+        lambda self, key, payload: {
+            "message": "Workflow executed successfully",
+            "workflow_run_id": run_id,
+        },
     )
 
     response = client.post("/api/webhooks/workflow/public-key", json={"email": "lead@example.com"})
 
     assert response.status_code == 200
-    assert response.json()["status"] == WorkflowRunStatus.COMPLETED
+    assert response.json() == {
+        "message": "Workflow executed successfully",
+        "workflow_run_id": str(run_id),
+    }
 
 
 def test_send_email_workflow_action_with_mocked_smtp():
