@@ -11,6 +11,7 @@ from app.core.logging import configure_logging
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.request_timeout import RequestTimeoutMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.services.background_worker import start_background_worker, stop_background_worker
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,14 @@ def create_app() -> FastAPI:
             status_code=500,
             content={"detail": "Internal server error.", "request_id": request_id},
         )
+
+    @app.on_event("startup")
+    async def startup_background_worker() -> None:
+        start_background_worker()
+
+    @app.on_event("shutdown")
+    async def shutdown_background_worker() -> None:
+        stop_background_worker()
 
     app.include_router(api_router, prefix=settings.API_PREFIX)
     return app

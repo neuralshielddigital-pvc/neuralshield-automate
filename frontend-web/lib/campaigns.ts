@@ -7,7 +7,7 @@ import type {
   LeadImportResponse,
   LeadListResponse,
   Workflow,
-  WorkflowListResponse
+  WorkflowListResponse,
 } from "@/lib/types";
 
 export type CampaignPayload = {
@@ -22,7 +22,7 @@ export type LeadImportPayload = {
     name?: string | null;
     email: string;
     phone?: string | null;
-    tags: string[];
+    tags?: string[];
   }>;
 };
 
@@ -37,32 +37,32 @@ export async function getCampaigns() {
 export async function createCampaign(payload: CampaignPayload) {
   return apiRequest<Campaign>("/api/campaigns", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export async function updateCampaign(campaignId: string, payload: Partial<CampaignPayload>) {
   return apiRequest<Campaign>(`/api/campaigns/${campaignId}`, {
     method: "PUT",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export async function deleteCampaign(campaignId: string) {
   return apiRequest<void>(`/api/campaigns/${campaignId}`, {
-    method: "DELETE"
+    method: "DELETE",
   });
 }
 
 export async function activateCampaign(campaignId: string) {
   return apiRequest<Campaign>(`/api/campaigns/${campaignId}/activate`, {
-    method: "POST"
+    method: "POST",
   });
 }
 
 export async function pauseCampaign(campaignId: string) {
   return apiRequest<Campaign>(`/api/campaigns/${campaignId}/pause`, {
-    method: "POST"
+    method: "POST",
   });
 }
 
@@ -73,7 +73,7 @@ export async function getLeads() {
 export async function importLeads(payload: LeadImportPayload) {
   return apiRequest<LeadImportResponse>("/api/leads/import", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -81,9 +81,13 @@ export async function getWorkflows() {
   return apiRequest<WorkflowListResponse>("/api/workflows");
 }
 
-export async function createWorkflow(payload: { name: string; is_active: boolean; definition: Record<string, unknown> }) {
+export async function createWorkflow(payload: {
+  name: string;
+  is_active: boolean;
+  definition: Record<string, unknown>;
+}) {
   return apiRequest<Workflow>("/api/workflows", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }

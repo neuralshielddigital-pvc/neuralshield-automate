@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,6 +34,10 @@ class Workflow(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    schedule_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    schedule_cron: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    next_run_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    last_scheduled_run_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
     public_webhook_key: Mapped[str] = mapped_column(String(160), unique=True, nullable=False, index=True)
     definition: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
@@ -111,5 +115,10 @@ class WorkflowRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     logs: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     trigger_payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    next_retry_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_dead_letter: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
     workflow: Mapped[Workflow] = relationship("Workflow", back_populates="runs")

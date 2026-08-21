@@ -33,7 +33,13 @@ export type CurrentUserResponse = {
 };
 
 export type PlanInterval = "monthly" | "yearly";
-export type SubscriptionStatus = "ACTIVE" | "CANCELED" | "PAST_DUE" | "INCOMPLETE";
+export type SubscriptionStatus =
+  | "ACTIVE"
+  | "PAUSED"
+  | "CANCELED"
+  | "PAST_DUE"
+  | "INCOMPLETE"
+  | "EXPIRED";
 
 export type BillingPlan = {
   id: string;
@@ -165,6 +171,10 @@ export type Workflow = {
   name: string;
   description: string | null;
   is_active: boolean;
+  schedule_enabled: boolean;
+  schedule_cron: string | null;
+  next_run_at: string | null;
+  last_scheduled_run_at: string | null;
   public_webhook_key: string;
   definition: Record<string, unknown>;
   triggers: WorkflowTrigger[];
@@ -173,8 +183,14 @@ export type Workflow = {
   updated_at: string;
 };
 
-export type WorkflowTriggerType = "WEBHOOK_RECEIVED" | "NEW_LEAD" | "CAMPAIGN_ACTIVATED";
-export type WorkflowActionType = "SEND_WEBHOOK" | "SEND_EMAIL" | "CREATE_LEAD" | "ADD_AUDIT_LOG";
+export type WorkflowTriggerType =
+  | "WEBHOOK_RECEIVED"
+  | "NEW_LEAD"
+  | "CAMPAIGN_ACTIVATED"
+  | "SCHEDULED"
+  | "GMAIL_NEW_EMAIL"
+  | "SLACK_NEW_MESSAGE";
+export type WorkflowActionType = "SEND_WEBHOOK" | "SEND_EMAIL" | "CREATE_LEAD" | "ADD_AUDIT_LOG" | "WAIT" | "CONDITION" | "HTTP_REQUEST" | "UPDATE_LEAD" | "TAG_LEAD" | "GOOGLE_SHEETS_APPEND" | "SLACK_SEND_MESSAGE" | "OPENAI_TEXT_GENERATE";
 export type WorkflowRunStatus = "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
 
 export type WorkflowTrigger = {
@@ -199,15 +215,12 @@ export type WorkflowRun = {
   id: string;
   workflow_id: string;
   status: WorkflowRunStatus;
-  logs: Record<string, unknown>;
-  trigger_payload: Record<string, unknown>;
+  logs: Record<string, unknown> | null;
+  trigger_payload: Record<string, unknown> | null;
+  input_data?: Record<string, unknown> | null;
+  output_data?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
-};
-
-export type WorkflowListResponse = {
-  items: Workflow[];
-  pagination: PaginationMeta;
 };
 
 export type WorkflowRunListResponse = {
@@ -220,4 +233,9 @@ export type CampaignStats = {
   active_campaigns: number;
   leads: number;
   workflows: number;
+};
+
+export type WorkflowListResponse = {
+  items: Workflow[];
+  pagination: PaginationMeta;
 };

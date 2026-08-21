@@ -1,0 +1,1 @@
+ALTER TYPE workflow_action_type ADD VALUE IF NOT EXISTS 'CONDITION';

@@ -4,6 +4,7 @@ from time import monotonic
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -12,11 +13,14 @@ from starlette.requests import Request
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_token
+from app.core.security import decode_token, verify_api_key
 from app.models.enums import UserRole
 from app.models.user import User
+from app.models.security import APIKey
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+api_key_scheme = HTTPBearer(auto_error=False)
 _LOGIN_ATTEMPTS: dict[str, list[float]] = {}
 
 
@@ -50,6 +54,44 @@ def get_current_user(
         raise credentials_exception
     return user
 
+def get_api_key_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(api_key_scheme),
+    db: Session = Depends(db_session),
+) -> User:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing API key.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    raw_key = credentials.credentials
+
+    if not raw_key.startswith("nsd_"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    keys = (
+        db.query(APIKey)
+        .filter(APIKey.revoked.is_(False))
+        .all()
+    )
+
+    for key in keys:
+        if verify_api_key(raw_key, key.key_hash):
+            user = db.get(User, key.user_id)
+            if user is None or not user.is_active:
+                break
+            return user
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or revoked API key.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 def require_roles(*roles: UserRole) -> Callable[[User], User]:
     def dependency(current_user: User = Depends(get_current_user)) -> User:
