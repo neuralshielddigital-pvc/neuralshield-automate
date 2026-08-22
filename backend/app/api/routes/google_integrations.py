@@ -154,6 +154,27 @@ def google_oauth_callback(
     credential.status = "connected"
 
     db.add(credential)
+    db.flush()
+
+    # A reconnect must leave only one active Google credential for the
+    # same tenant/account. Historical credentials are retained for audit
+    # purposes but must not continue to be polled.
+    if account_email:
+        (
+            db.query(IntegrationCredential)
+            .filter(
+                IntegrationCredential.tenant_id == tenant_id,
+                IntegrationCredential.provider == "google",
+                IntegrationCredential.account_email == account_email,
+                IntegrationCredential.id != credential.id,
+                IntegrationCredential.status == "connected",
+            )
+            .update(
+                {"status": "disconnected"},
+                synchronize_session=False,
+            )
+        )
+
     db.commit()
 
     return RedirectResponse(

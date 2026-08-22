@@ -45,15 +45,34 @@ def _gmail_payload(message: dict[str, Any], account_email: str) -> dict[str, Any
 
 
 def run_gmail_new_email_poll(db: Session, max_messages: int = 5) -> dict[str, int]:
-    credentials = (
+    connected_credentials = (
         db.query(IntegrationCredential)
         .filter(
             IntegrationCredential.provider == "google",
             IntegrationCredential.status == "connected",
             IntegrationCredential.access_token_encrypted.isnot(None),
         )
+        .order_by(
+            IntegrationCredential.updated_at.desc(),
+            IntegrationCredential.created_at.desc(),
+        )
         .all()
     )
+
+    # Defensive dedupe: legacy reconnects may have left multiple connected
+    # rows for the same tenant/account. Poll only the newest one.
+    credentials = []
+    seen_accounts = set()
+
+    for credential in connected_credentials:
+        account_key = (
+            str(credential.tenant_id),
+            (credential.account_email or "").strip().lower(),
+        )
+        if account_key in seen_accounts:
+            continue
+        seen_accounts.add(account_key)
+        credentials.append(credential)
 
     checked = 0
     triggered = 0
