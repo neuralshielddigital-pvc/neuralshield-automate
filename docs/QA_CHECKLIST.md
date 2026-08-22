@@ -20,18 +20,30 @@ Use this checklist before merging major SaaS releases and before production depl
 
 - Open `/dashboard/billing`.
 - Confirm current subscription state renders.
-- Start Stripe Checkout for Starter, Pro, and Enterprise.
-- Confirm checkout session redirects to Stripe.
-- Confirm billing portal session opens for subscribed users.
+- Confirm only Razorpay is visible in customer-facing billing.
+- Confirm Starter is `$19/month`.
+- Confirm Pro is `$59/month`.
+- Confirm Business is `$149/month`.
+- Confirm order amount is calculated server-side.
+- Confirm checkout signature verification rejects invalid signatures.
+- Confirm payment amount, currency, order, user, tenant, and plan are validated.
+- Confirm uncaptured payments cannot activate subscriptions.
+- Confirm duplicate payment IDs cannot activate another account or plan.
+- Confirm successful payment creates one Payment record.
+- Confirm successful payment activates the correct subscription.
+- Confirm billing dashboard and usage limits update after activation.
 
-## Stripe Webhook
+## Razorpay Live Verification
 
-- Use Stripe CLI to forward to `/api/stripe/webhook`.
-- Trigger `checkout.session.completed`.
-- Trigger `customer.subscription.updated`.
-- Trigger `invoice.payment_failed`.
-- Confirm duplicate webhook event IDs are not processed twice.
-- Confirm subscription status and period dates update in PostgreSQL.
+- Confirm Razorpay account is fully activated.
+- Confirm international payments are enabled if USD checkout is required.
+- Install live Key ID and Secret only in backend `.env`.
+- Set `RAZORPAY_CURRENCY` to the currency approved for the live account.
+- Configure the live Razorpay webhook.
+- Complete a controlled small real payment.
+- Confirm signature verification passes.
+- Confirm subscription, Payment record, usage limits, billing dashboard, and audit logs update.
+- Confirm controlled refund and refund audit logging work.
 
 ## Affiliate
 
@@ -96,6 +108,6 @@ Use this checklist before merging major SaaS releases and before production depl
 - Confirm Certbot SSL certificate is active.
 - Confirm frontend can login against production API.
 - Submit public lead form.
-- Trigger Stripe webhook.
-- Check backend logs with `journalctl -u neuralshielddigital-backend -f`.
+- Complete a controlled Razorpay payment verification.
+- Check backend logs with `journalctl -u neuralshield-backend -f`.
 - Restart backend and Nginx and confirm service recovery.

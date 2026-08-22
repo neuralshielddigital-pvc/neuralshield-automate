@@ -70,3 +70,36 @@ class Subscription(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     user: Mapped[User] = relationship("User", back_populates="subscriptions")
     tenant: Mapped[Tenant] = relationship("Tenant", back_populates="subscriptions")
     plan: Mapped[Plan] = relationship("Plan", back_populates="subscriptions")
+
+
+class Payment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "payments"
+
+    user_id: Mapped[UUID] = mapped_column(
+        PostgresUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tenant_id: Mapped[UUID] = mapped_column(
+        PostgresUUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    plan_id: Mapped[UUID | None] = mapped_column(
+        PostgresUUID(as_uuid=True),
+        ForeignKey("plans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    provider_payment_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    provider_order_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD")
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="captured", index=True)
+
+    user: Mapped["User"] = relationship("User")
+    tenant: Mapped["Tenant"] = relationship("Tenant")
+    plan: Mapped[Plan | None] = relationship("Plan")

@@ -25,14 +25,36 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     JWT_ALGORITHM: str = "HS256"
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
+    INTEGRATION_ENCRYPTION_KEY: str | None = None
 
     PASSWORD_BCRYPT_ROUNDS: int = 12
 
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_STARTER_PRICE_ID: str = ""
-    STRIPE_PRO_PRICE_ID: str = ""
-    STRIPE_ENTERPRISE_PRICE_ID: str = ""
+
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = ""
+
+    SLACK_CLIENT_ID: str = ""
+    SLACK_CLIENT_SECRET: str = ""
+    SLACK_REDIRECT_URI: str = ""
+    SLACK_SIGNING_SECRET: str = ""
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+
+
+
+
+    PADDLE_API_KEY: str = ""
+    PADDLE_WEBHOOK_SECRET: str = ""
+    PADDLE_ENVIRONMENT: str = "production"
+    PADDLE_API_BASE_URL: str = "https://api.paddle.com"
+    PADDLE_CHECKOUT_URL: str = "https://app.neuralshielddigital.com/dashboard/billing"
+    PADDLE_STARTER_PRICE_ID: str = ""
+    PADDLE_PRO_PRICE_ID: str = ""
+    PADDLE_BUSINESS_PRICE_ID: str = ""
 
     FRONTEND_SUCCESS_URL: str = "http://localhost:3000/billing/success"
     FRONTEND_CANCEL_URL: str = "http://localhost:3000/billing/cancel"

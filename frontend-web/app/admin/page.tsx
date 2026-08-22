@@ -146,8 +146,8 @@ export default function AdminPage() {
   return (
     <main className="dashboard-shell">
       <header className="dashboard-topbar">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4">
+          <div className="flex shrink-0 items-center gap-3">
             <div className="brand-mark h-11 w-11 ring-4 ring-mint/70">
               NS
             </div>
@@ -156,9 +156,34 @@ export default function AdminPage() {
               <p className="text-xs text-steel">Platform control center</p>
             </div>
           </div>
-          <Link className="btn-secondary px-3 py-2" href="/dashboard">
-            Dashboard
-          </Link>
+
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/customers" className="btn-primary">Customers</Link>
+            <Link href="/admin/payments" className="btn-secondary px-3 py-2">Payments</Link>
+            <Link href="/admin/revenue" className="btn-secondary px-3 py-2">Revenue</Link>
+            <Link href="/admin/refunds" className="btn-secondary px-3 py-2">Refunds</Link>
+            <Link href="/admin/subscriptions" className="btn-secondary px-3 py-2">Subscriptions</Link>
+          <Link href="/admin/workflow-runs" className="btn-secondary px-3 py-2">Workflow Runs</Link>
+          <Link href="/admin/dead-letter" className="btn-secondary px-3 py-2">Dead Letter Queue</Link>
+          <Link href="/admin/queue-dashboard" className="btn-secondary px-3 py-2">Queue Dashboard</Link>
+          <Link href="/admin/workflow-templates" className="btn-secondary px-3 py-2">Workflow Templates</Link>
+          <Link href="/admin/workflow-analytics" className="btn-secondary px-3 py-2">Workflow Analytics</Link>
+            <Link href="/admin/tenants" className="btn-secondary px-3 py-2">Tenants</Link>
+            <Link href="/admin/analytics" className="btn-secondary px-3 py-2">Analytics</Link>
+            <Link href="/admin/backups" className="btn-secondary px-3 py-2">Backups</Link>
+<Link href="/admin/workflows" className="btn-secondary px-3 py-2">Workflows</Link>
+            <Link href="/admin/affiliates" className="btn-secondary px-3 py-2">Affiliates</Link>
+            <Link href="/admin/reports" className="btn-secondary px-3 py-2">Reports</Link>
+            <Link href="/admin/api-keys" className="btn-secondary px-3 py-2">API Keys</Link>
+            <Link href="/admin/security-events" className="btn-secondary px-3 py-2">Security Events</Link>
+            <Link href="/admin/incidents" className="btn-secondary px-3 py-2">Incidents</Link>
+            <Link href="/admin/support" className="btn-secondary px-3 py-2">Support</Link>
+            <Link href="/admin/settings" className="btn-secondary px-3 py-2">Settings</Link>
+            <Link href="/admin/system-health" className="btn-secondary px-3 py-2">System Health</Link>
+            <Link href="/admin/audit-logs" className="btn-secondary px-3 py-2">Audit Logs</Link>
+            <Link href="/admin/users" className="btn-secondary px-3 py-2">Users</Link>
+            <Link href="/dashboard" className="btn-secondary px-3 py-2">Dashboard</Link>
+          </div>
         </div>
       </header>
 

@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 import hashlib
 import secrets
-from datetime import UTC, datetime, timedelta
+
 from typing import Any
 
 import bcrypt
@@ -52,3 +54,15 @@ def create_refresh_token() -> str:
 
 def hash_refresh_token(refresh_token: str) -> str:
     return hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()
+
+
+def generate_api_key() -> str:
+    return "nsd_" + secrets.token_urlsafe(32)
+
+
+def hash_api_key(api_key: str) -> str:
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+
+
+def verify_api_key(api_key: str, key_hash: str) -> bool:
+    return hash_api_key(api_key) == key_hash

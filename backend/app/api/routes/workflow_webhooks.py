@@ -17,4 +17,4 @@ def receive_workflow_webhook(
     payload: dict[str, Any],
     db: Session = Depends(db_session),
 ) -> PublicWorkflowWebhookResponse:
-    return WorkflowService(db).execute_public_webhook(public_webhook_key, payload)
+    return WorkflowService(db).execute_public_webhook(public_webhook_key.strip(), payload)

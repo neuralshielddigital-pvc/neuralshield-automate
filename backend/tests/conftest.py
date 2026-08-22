@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -10,6 +12,7 @@ from fastapi.testclient import TestClient
 from app.api.deps import db_session, get_current_user
 from app.api.routes.auth import login_rate_limit_ready
 from app.api.routes.public import public_lead_rate_limit
+from app.core.config import settings
 from app.main import app
 from app.models.enums import UserRole
 
@@ -40,13 +43,39 @@ def fake_user() -> SimpleNamespace:
 
 
 @pytest.fixture
-def client(fake_user: SimpleNamespace) -> TestClient:
+def client(
+    fake_user: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
     app.dependency_overrides[db_session] = lambda: object()
     app.dependency_overrides[get_current_user] = lambda: fake_user
     app.dependency_overrides[login_rate_limit_ready] = lambda: None
     app.dependency_overrides[public_lead_rate_limit] = lambda: None
-    with TestClient(app) as test_client:
+
+    monkeypatch.setattr(
+        "app.main.start_background_worker",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "app.main.stop_background_worker",
+        lambda: None,
+    )
+
+    trusted_host = next(
+        (
+            host
+            for host in settings.TRUSTED_HOSTS
+            if host and host != "*"
+        ),
+        "testserver",
+    )
+
+    with TestClient(
+        app,
+        base_url=f"https://{trusted_host}",
+    ) as test_client:
         yield test_client
+
     app.dependency_overrides.clear()
 
 

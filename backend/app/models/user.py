@@ -26,6 +26,11 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"),
@@ -51,6 +56,16 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    password_reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
+        "PasswordResetToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    email_verification_tokens: Mapped[list[EmailVerificationToken]] = relationship(
+        "EmailVerificationToken",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -117,3 +132,93 @@ class RefreshToken(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
     user: Mapped[User] = relationship("User", back_populates="refresh_tokens")
+
+class PasswordResetToken(
+    Base,
+    UUIDPrimaryKeyMixin,
+    TimestampMixin,
+):
+    __tablename__ = "password_reset_tokens"
+
+    user_id: Mapped[UUID] = mapped_column(
+        PostgresUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    token_hash: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+
+    revoked: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        index=True,
+    )
+
+    user: Mapped[User] = relationship(
+        "User",
+        back_populates="password_reset_tokens",
+    )
+
+class EmailVerificationToken(
+    Base,
+    UUIDPrimaryKeyMixin,
+    TimestampMixin,
+):
+    __tablename__ = "email_verification_tokens"
+
+    user_id: Mapped[UUID] = mapped_column(
+        PostgresUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    token_hash: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+
+    revoked: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        index=True,
+    )
+
+    user: Mapped[User] = relationship(
+        "User",
+        back_populates="email_verification_tokens",
+    )

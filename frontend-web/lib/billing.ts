@@ -2,12 +2,23 @@ import { apiRequest } from "@/lib/api";
 import type { SubscriptionResponse } from "@/lib/types";
 
 export async function getSubscription() {
-  return apiRequest<SubscriptionResponse>("/api/billing/subscription");
+  return apiRequest<SubscriptionResponse>(
+    "/api/billing/subscription",
+  );
 }
 
-export async function createCheckoutSession(planName: string) {
-  return apiRequest<{ checkout_url: string }>("/api/billing/create-checkout-session", {
+export async function createPaddleCheckout(
+  planName: string,
+) {
+  return apiRequest<{
+    transaction_id: string;
+    provider: "paddle";
+    plan: string;
+    environment: string;
+  }>("/api/paddle/checkout", {
     method: "POST",
-    body: JSON.stringify({ plan_name: planName })
+    body: JSON.stringify({
+      plan_name: planName,
+    }),
   });
 }

@@ -8,12 +8,17 @@ import { getMe } from "@/lib/auth";
 import type { CurrentUserResponse } from "@/lib/types";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "D" },
-  { href: "/dashboard/campaigns", label: "Campaigns", icon: "C" },
-  { href: "/dashboard/leads", label: "Leads", icon: "L" },
-  { href: "/dashboard/workflows", label: "Workflows", icon: "W" },
-  { href: "/dashboard/billing", label: "Billing", icon: "B" },
-  { href: "/dashboard/affiliate", label: "Affiliate", icon: "A" }
+  { href: "/dashboard/", label: "Dashboard", icon: "D" },
+  { href: "/dashboard/campaigns/", label: "Campaigns", icon: "C" },
+  { href: "/dashboard/leads/", label: "Leads", icon: "L" },
+  { href: "/dashboard/workflows/", label: "Workflows", icon: "W" },
+  { href: "/dashboard/templates/", label: "Templates", icon: "T" },
+  { href: "/dashboard/integrations/", label: "Integrations", icon: "I" },
+  { href: "/dashboard/embed/", label: "Embed", icon: "E" },
+  { href: "/dashboard/billing/", label: "Billing", icon: "B" },
+  { href: "/dashboard/affiliate/", label: "Affiliate", icon: "A" },
+  { href: "/dashboard/api-keys/", label: "API Keys", icon: "K" },
+  { href: "/dashboard/api-docs/", label: "API Docs", icon: "X" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -89,8 +94,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <main className="dashboard-shell">
-      <aside className="dashboard-sidebar hidden p-5 md:flex">
-        <div className="flex items-center gap-3 border-b border-line pb-5">
+      <aside className="dashboard-sidebar hidden min-h-0 overflow-hidden p-5 md:flex">
+        <div className="shrink-0 flex items-center gap-3 border-b border-line pb-5">
           <div className="brand-mark h-11 w-11 ring-4 ring-mint/70">
             NS
           </div>
@@ -100,7 +105,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="mt-5 grid gap-1.5">
+        <nav className="mt-5 min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pr-1">
           {[
             ...navItems,
             ...(session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"
@@ -123,14 +128,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="mt-auto rounded-2xl border border-line bg-linen/80 p-4">
+        <div className="mt-4 shrink-0 rounded-2xl border border-line bg-linen/80 p-4">
           <p className="text-xs font-bold uppercase text-pine">Workspace</p>
           <p className="mt-1 truncate text-sm font-semibold text-ink">{session.user.role}</p>
         </div>
       </aside>
 
       <header className="dashboard-topbar">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 lg:px-8">
+        <div className="mx-auto flex w-full max-w-full items-center justify-between gap-4 px-3 py-4 sm:px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <div className="brand-mark h-10 w-10 text-xs ring-4 ring-mint/70 md:hidden">
               NS
@@ -156,7 +161,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <div className="dashboard-content">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto w-full max-w-full px-3 sm:px-4 lg:px-6">
           <aside className="dashboard-sidebar mb-5 p-3 md:hidden">
             <nav className="flex gap-2 overflow-x-auto pb-1">
             {[
@@ -181,7 +186,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             })}
             </nav>
           </aside>
-          <section className="min-w-0">{children}</section>
+          <section className="min-w-0 w-full max-w-full overflow-hidden">{children}</section>
         </div>
       </div>
     </main>

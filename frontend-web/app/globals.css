@@ -199,22 +199,27 @@ td:first-child {
   }
 
   @media (min-width: 768px) {
-    .dashboard-topbar {
-      position: sticky;
-      top: 0;
-      margin-left: 316px;
-    }
+  .dashboard-topbar {
+    position: sticky;
+    top: 0;
+    margin-left: 316px;
+    width: calc(100% - 316px);
   }
+}
 
   .dashboard-content {
-    @apply min-w-0 px-4 py-5 lg:px-8 lg:py-8;
-  }
+  @apply min-w-0 px-4 py-5 lg:py-8;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
-  @media (min-width: 768px) {
-    .dashboard-content {
-      margin-left: 316px;
-    }
+@media (min-width: 768px) {
+  .dashboard-content {
+    margin-left: 316px;
+    width: calc(100% - 316px);
   }
+}
 
   .sidebar-link {
     @apply flex items-center gap-3 whitespace-nowrap px-3 py-2.5 text-sm font-semibold;
@@ -409,5 +414,42 @@ td:first-child {
     background:
       radial-gradient(circle at 12% 12%, rgba(22, 97, 79, 0.14), transparent 24rem),
       linear-gradient(180deg, #fbf8f0, var(--background));
+  }
+}
+
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.dashboard-content,
+.dashboard-content * {
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .dashboard-topbar,
+  .dashboard-content {
+    margin-left: 316px !important;
+    width: calc(100vw - 316px) !important;
+    max-width: calc(100vw - 316px) !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .dashboard-content > div,
+  .dashboard-content section {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 }
