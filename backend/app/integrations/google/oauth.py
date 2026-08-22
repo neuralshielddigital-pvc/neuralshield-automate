@@ -19,7 +19,7 @@ def build_google_oauth_url(state: str) -> str:
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
         "response_type": "code",
         "access_type": "offline",
-        "prompt": "consent",
+        "prompt": "select_account consent",
         "scope": " ".join(SCOPES),
         "state": state,
     }
