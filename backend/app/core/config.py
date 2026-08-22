@@ -32,11 +32,6 @@ class Settings(BaseSettings):
 
     PASSWORD_BCRYPT_ROUNDS: int = 12
 
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_STARTER_PRICE_ID: str = ""
-    STRIPE_PRO_PRICE_ID: str = ""
-    STRIPE_ENTERPRISE_PRICE_ID: str = ""
 
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
@@ -49,27 +44,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
 
-    RAZORPAY_KEY_ID: str = ""
-    RAZORPAY_KEY_SECRET: str = ""
-    RAZORPAY_WEBHOOK_SECRET: str = ""
-    RAZORPAY_CURRENCY: str = "INR"
 
-    LEMON_SQUEEZY_API_KEY: str = ""
-    LEMON_SQUEEZY_WEBHOOK_SECRET: str = ""
-    LEMON_SQUEEZY_STORE_ID: str = ""
-    LEMON_SQUEEZY_TEST_MODE: bool = True
-    LEMON_SQUEEZY_STARTER_PRODUCT_ID: str = ""
-    LEMON_SQUEEZY_STARTER_VARIANT_ID: str = ""
-    LEMON_SQUEEZY_PRO_PRODUCT_ID: str = ""
-    LEMON_SQUEEZY_PRO_VARIANT_ID: str = ""
-    LEMON_SQUEEZY_BUSINESS_PRODUCT_ID: str = ""
-    LEMON_SQUEEZY_BUSINESS_VARIANT_ID: str = ""
 
-    PAYPAL_MODE: str = "sandbox"
-    PAYPAL_CLIENT_ID: str = ""
-    PAYPAL_CLIENT_SECRET: str = ""
-    PAYPAL_WEBHOOK_ID: str = ""
-    PAYPAL_CURRENCY: str = "USD"
 
     PADDLE_API_KEY: str = ""
     PADDLE_WEBHOOK_SECRET: str = ""

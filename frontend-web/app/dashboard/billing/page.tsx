@@ -72,12 +72,6 @@ const plans: Plan[] = [
   },
 ];
 
-const planRanks: Record<Plan["name"], number> = {
-  Starter: 1,
-  Pro: 2,
-  Enterprise: 3,
-};
-
 const activeSubscriptionStatuses = new Set([
   "ACTIVE",
   "TRIALING",
@@ -189,11 +183,7 @@ export default function BillingPage() {
       return `Choose ${plan.displayName}`;
     }
 
-    if (planRanks[plan.name] > planRanks[currentPlan.name]) {
-      return `Upgrade to ${plan.displayName}`;
-    }
-
-    return `Switch to ${plan.displayName}`;
+    return "Contact support to change plan";
   }
 
   async function handleCheckout(plan: Plan) {
@@ -389,8 +379,8 @@ export default function BillingPage() {
           </h2>
 
           <p className="mt-2 text-sm text-steel">
-            Upgrade as your automation volume grows. You will see the final
-            payment details before confirming checkout.
+            Choose a plan to start securely with Paddle. Existing active
+            subscriptions can change plans through support without duplicate billing.
           </p>
         </div>
 
