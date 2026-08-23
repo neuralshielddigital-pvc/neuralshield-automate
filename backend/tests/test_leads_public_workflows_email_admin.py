@@ -142,3 +142,82 @@ def test_admin_api_role_protection(client):
     assert forbidden.status_code == 403
 
     app.dependency_overrides[get_current_user] = lambda: make_user(UserRole.ADMIN)
+
+
+def test_agency_pilot_lead_form(client, monkeypatch):
+    captured = {}
+
+    def fake_create(self, payload):
+        captured["tenant_slug"] = payload.tenant_slug
+        captured["name"] = payload.name
+        captured["email"] = str(payload.email)
+        captured["source"] = payload.source
+        captured["message"] = payload.message
+        return {
+            "success": True,
+            "message": "Thanks. We received your request.",
+        }
+
+    monkeypatch.setattr(
+        PublicLeadService,
+        "create_public_lead",
+        fake_create,
+    )
+
+    response = client.post(
+        "/api/public/agency-pilot/leads",
+        json={
+            "name": "Alex Morgan",
+            "email": "alex@example.com",
+            "agency_name": "Example Agency",
+            "workflow": (
+                "Client onboarding and approval follow-up "
+                "takes too much manual coordination."
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Thanks. We received your request.",
+    }
+    assert captured["tenant_slug"] == "neuralshielddigital"
+    assert captured["name"] == "Alex Morgan"
+    assert captured["email"] == "alex@example.com"
+    assert captured["source"] == "agency-pilot"
+    assert "Agency: Example Agency" in captured["message"]
+    assert "Workflow: Client onboarding" in captured["message"]
+
+
+def test_agency_pilot_lead_form_validates_input(client):
+    response = client.post(
+        "/api/public/agency-pilot/leads",
+        json={
+            "name": "A",
+            "email": "not-an-email",
+            "agency_name": "",
+            "workflow": "short",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_agency_pilot_origin_cors(client):
+    origin = (
+        "https://neuralshield-agency-pilot."
+        "neuralshielddigital.chatgpt.site"
+    )
+
+    response = client.options(
+        "/api/public/agency-pilot/leads",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin

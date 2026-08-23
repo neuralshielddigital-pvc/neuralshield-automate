@@ -33,9 +33,16 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestTimeoutMiddleware)
+    cors_origins = list(settings.BACKEND_CORS_ORIGINS)
+    if (
+        settings.AGENCY_PILOT_ORIGIN
+        and settings.AGENCY_PILOT_ORIGIN not in cors_origins
+    ):
+        cors_origins.append(settings.AGENCY_PILOT_ORIGIN)
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", settings.REQUEST_ID_HEADER],

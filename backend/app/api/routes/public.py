@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import db_session
 from app.core.config import settings
-from app.schemas.public import PublicLeadCreate, PublicLeadResponse
+from app.schemas.public import (
+    AgencyPilotLeadCreate,
+    PublicLeadCreate,
+    PublicLeadResponse,
+)
 from app.services.public_lead_service import PublicLeadService
 
 
@@ -38,3 +42,24 @@ def create_public_lead(
     db: Session = Depends(db_session),
 ) -> PublicLeadResponse:
     return PublicLeadService(db).create_public_lead(payload)
+
+@router.post(
+    "/agency-pilot/leads",
+    response_model=PublicLeadResponse,
+    dependencies=[Depends(public_lead_rate_limit)],
+)
+def create_agency_pilot_lead(
+    payload: AgencyPilotLeadCreate,
+    db: Session = Depends(db_session),
+) -> PublicLeadResponse:
+    lead_payload = PublicLeadCreate(
+        tenant_slug="neuralshielddigital",
+        name=payload.name,
+        email=payload.email,
+        source="agency-pilot",
+        message=(
+            f"Agency: {payload.agency_name}\n"
+            f"Workflow: {payload.workflow}"
+        ),
+    )
+    return PublicLeadService(db).create_public_lead(lead_payload)
