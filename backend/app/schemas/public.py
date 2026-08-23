@@ -21,6 +21,13 @@ class PublicLeadCreate(BaseModel):
         return value
 
 
+class AgencyPilotLeadCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=150)
+    email: EmailStr
+    agency_name: str = Field(min_length=2, max_length=180)
+    workflow: str = Field(min_length=10, max_length=2000)
+
+
 class PublicLeadResponse(BaseModel):
     success: bool
     message: str
