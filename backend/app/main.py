@@ -34,11 +34,12 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestTimeoutMiddleware)
     cors_origins = list(settings.BACKEND_CORS_ORIGINS)
-    if (
-        settings.AGENCY_PILOT_ORIGIN
-        and settings.AGENCY_PILOT_ORIGIN not in cors_origins
+    for agency_origin in (
+        settings.AGENCY_PILOT_ORIGIN,
+        settings.AGENCY_PILOT_PRODUCTION_ORIGIN,
     ):
-        cors_origins.append(settings.AGENCY_PILOT_ORIGIN)
+        if agency_origin and agency_origin not in cors_origins:
+            cors_origins.append(agency_origin)
 
     app.add_middleware(
         CORSMiddleware,
