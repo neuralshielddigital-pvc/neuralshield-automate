@@ -30,6 +30,7 @@ type BuilderForm = {
   leadPhone: string;
   leadTags: string;
   auditAction: string;
+  waitSeconds: string;
   spreadsheetId: string;
   sheetName: string;
   emailTo: string;
@@ -91,6 +92,7 @@ const blankForm: BuilderForm = {
   leadPhone: "{{phone}}",
   leadTags: "workflow,automation",
   auditAction: "workflow.action",
+  waitSeconds: "1",
   spreadsheetId: "",
   sheetName: "Sheet1",
   slackWebhookUrl: "",
@@ -682,6 +684,16 @@ if (form.actionType === "CONDITION") {
   };
 }
 
+if (form.actionType === "WAIT") {
+  const seconds = Number(form.waitSeconds);
+
+  if (!Number.isInteger(seconds) || seconds < 1 || seconds > 30) {
+    throw new Error("Wait duration must be an integer between 1 and 30 seconds.");
+  }
+
+  return { seconds };
+}
+
 if (form.actionType === "SLACK_SEND_MESSAGE") {
   return {
     channel: form.channel,
@@ -715,6 +727,11 @@ function actionDraftSummary(action: ActionDraft) {
   }
   if (action.type === "ADD_AUDIT_LOG") {
     return typeof action.config.action === "string" ? ` → ${action.config.action}` : "";
+  }
+  if (action.type === "WAIT") {
+    return typeof action.config.seconds === "number"
+      ? ` → ${action.config.seconds}s`
+      : "";
   }
   return "";
 }
@@ -829,6 +846,10 @@ function editActionDraft(index: number) {
       typeof config.action === "string"
         ? config.action
         : current.auditAction,
+    waitSeconds:
+      typeof config.seconds === "number"
+        ? String(config.seconds)
+        : current.waitSeconds,
     channel:
       typeof config.channel === "string"
         ? config.channel
@@ -1178,6 +1199,10 @@ function startEdit(workflow: Workflow) {
       typeof config.action === "string"
         ? config.action
         : "workflow.action",
+    waitSeconds:
+      typeof config.seconds === "number"
+        ? String(config.seconds)
+        : "1",
     emailTo:
       typeof config.to === "string"
         ? config.to
@@ -1747,6 +1772,33 @@ async function copyWebhookUrl(workflow: Workflow) {
               <p className="surface-panel px-3 py-2 text-sm text-steel">
                 Uses webhook payload fields: name, email, phone, source, tags.
               </p>
+            ) : null}
+
+            {form.actionType === "WAIT" ? (
+              <div className="grid gap-2">
+                <label className="text-sm font-medium" htmlFor="wait-seconds">
+                  Wait duration (seconds)
+                </label>
+                <input
+                  id="wait-seconds"
+                  className="focus-ring px-3.5 py-2.5 text-sm"
+                  min="1"
+                  max="30"
+                  step="1"
+                  type="number"
+                  value={form.waitSeconds}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      waitSeconds: event.target.value,
+                    }))
+                  }
+                  required
+                />
+                <p className="text-xs text-steel">
+                  Enter a whole number from 1 to 30.
+                </p>
+              </div>
             ) : null}
 {form.actionType === "SLACK_SEND_MESSAGE" ? (
   <>
