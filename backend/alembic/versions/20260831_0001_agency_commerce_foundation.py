@@ -1,0 +1,390 @@
+"""agency commerce foundation
+
+Revision ID: 20260831_0001
+Revises: 20260823_0001
+Create Date: 2026-08-31
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+
+revision: str = "20260831_0001"
+down_revision: Union[str, None] = "20260823_0001"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "agency_customers",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column("email", sa.String(length=320), nullable=False),
+        sa.Column("name", sa.String(length=150), nullable=True),
+        sa.Column("agency_name", sa.String(length=180), nullable=True),
+        sa.Column(
+            "paddle_customer_id",
+            sa.String(length=255),
+            nullable=True,
+        ),
+        sa.Column(
+            "status",
+            sa.String(length=32),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint(
+            "id",
+            name=op.f("pk_agency_customers"),
+        ),
+        sa.UniqueConstraint(
+            "email",
+            name=op.f("uq_agency_customers_email"),
+        ),
+        sa.UniqueConstraint(
+            "paddle_customer_id",
+            name=op.f("uq_agency_customers_paddle_customer_id"),
+        ),
+    )
+    op.create_index(
+        op.f("ix_agency_customers_email"),
+        "agency_customers",
+        ["email"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_agency_customers_agency_name"),
+        "agency_customers",
+        ["agency_name"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_agency_customers_paddle_customer_id"),
+        "agency_customers",
+        ["paddle_customer_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_agency_customers_status"),
+        "agency_customers",
+        ["status"],
+        unique=False,
+    )
+
+    op.create_table(
+        "agency_orders",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "customer_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "paddle_transaction_id",
+            sa.String(length=255),
+            nullable=False,
+        ),
+        sa.Column(
+            "paddle_price_id",
+            sa.String(length=255),
+            nullable=False,
+        ),
+        sa.Column(
+            "product_key",
+            sa.String(length=100),
+            nullable=False,
+        ),
+        sa.Column(
+            "amount",
+            sa.Numeric(precision=12, scale=2),
+            nullable=False,
+        ),
+        sa.Column(
+            "currency",
+            sa.String(length=10),
+            nullable=False,
+        ),
+        sa.Column(
+            "status",
+            sa.String(length=32),
+            nullable=False,
+        ),
+        sa.Column(
+            "completed_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["customer_id"],
+            ["agency_customers.id"],
+            name=op.f("fk_agency_orders_customer_id_agency_customers"),
+            ondelete="RESTRICT",
+        ),
+        sa.PrimaryKeyConstraint(
+            "id",
+            name=op.f("pk_agency_orders"),
+        ),
+        sa.UniqueConstraint(
+            "paddle_transaction_id",
+            name=op.f("uq_agency_orders_paddle_transaction_id"),
+        ),
+    )
+    for column in (
+        "customer_id",
+        "paddle_transaction_id",
+        "paddle_price_id",
+        "product_key",
+        "status",
+        "completed_at",
+    ):
+        op.create_index(
+            op.f(f"ix_agency_orders_{column}"),
+            "agency_orders",
+            [column],
+            unique=False,
+        )
+
+    op.create_table(
+        "agency_entitlements",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "customer_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "order_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "product_key",
+            sa.String(length=100),
+            nullable=False,
+        ),
+        sa.Column(
+            "status",
+            sa.String(length=32),
+            nullable=False,
+        ),
+        sa.Column(
+            "granted_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "revoked_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["customer_id"],
+            ["agency_customers.id"],
+            name=op.f(
+                "fk_agency_entitlements_customer_id_agency_customers"
+            ),
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["order_id"],
+            ["agency_orders.id"],
+            name=op.f(
+                "fk_agency_entitlements_order_id_agency_orders"
+            ),
+            ondelete="RESTRICT",
+        ),
+        sa.PrimaryKeyConstraint(
+            "id",
+            name=op.f("pk_agency_entitlements"),
+        ),
+        sa.UniqueConstraint(
+            "order_id",
+            "product_key",
+            name="uq_agency_entitlements_order_product",
+        ),
+    )
+    for column in (
+        "customer_id",
+        "order_id",
+        "product_key",
+        "status",
+    ):
+        op.create_index(
+            op.f(f"ix_agency_entitlements_{column}"),
+            "agency_entitlements",
+            [column],
+            unique=False,
+        )
+
+    op.create_table(
+        "agency_fulfilments",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "entitlement_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "status",
+            sa.String(length=32),
+            nullable=False,
+        ),
+        sa.Column(
+            "delivery_method",
+            sa.String(length=64),
+            nullable=False,
+        ),
+        sa.Column(
+            "destination",
+            sa.String(length=500),
+            nullable=True,
+        ),
+        sa.Column(
+            "delivered_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+        ),
+        sa.Column(
+            "last_error",
+            sa.Text(),
+            nullable=True,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["entitlement_id"],
+            ["agency_entitlements.id"],
+            name=op.f(
+                "fk_agency_fulfilments_entitlement_id_agency_entitlements"
+            ),
+            ondelete="RESTRICT",
+        ),
+        sa.PrimaryKeyConstraint(
+            "id",
+            name=op.f("pk_agency_fulfilments"),
+        ),
+        sa.UniqueConstraint(
+            "entitlement_id",
+            name=op.f(
+                "uq_agency_fulfilments_entitlement_id"
+            ),
+        ),
+    )
+    op.create_index(
+        op.f("ix_agency_fulfilments_entitlement_id"),
+        "agency_fulfilments",
+        ["entitlement_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_agency_fulfilments_status"),
+        "agency_fulfilments",
+        ["status"],
+        unique=False,
+    )
+
+
+def downgrade() -> None:
+    op.drop_index(
+        op.f("ix_agency_fulfilments_status"),
+        table_name="agency_fulfilments",
+    )
+    op.drop_index(
+        op.f("ix_agency_fulfilments_entitlement_id"),
+        table_name="agency_fulfilments",
+    )
+    op.drop_table("agency_fulfilments")
+
+    for column in (
+        "status",
+        "product_key",
+        "order_id",
+        "customer_id",
+    ):
+        op.drop_index(
+            op.f(f"ix_agency_entitlements_{column}"),
+            table_name="agency_entitlements",
+        )
+    op.drop_table("agency_entitlements")
+
+    for column in (
+        "completed_at",
+        "status",
+        "product_key",
+        "paddle_price_id",
+        "paddle_transaction_id",
+        "customer_id",
+    ):
+        op.drop_index(
+            op.f(f"ix_agency_orders_{column}"),
+            table_name="agency_orders",
+        )
+    op.drop_table("agency_orders")
+
+    for column in (
+        "status",
+        "paddle_customer_id",
+        "agency_name",
+        "email",
+    ):
+        op.drop_index(
+            op.f(f"ix_agency_customers_{column}"),
+            table_name="agency_customers",
+        )
+    op.drop_table("agency_customers")
