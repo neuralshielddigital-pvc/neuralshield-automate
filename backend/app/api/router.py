@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes.admin import router as admin_router
+from app.api.routes.agency_admin import router as agency_admin_router
 from app.api.routes.affiliate import router as affiliate_router
 from app.api.routes.api_keys import router as api_keys_router
 from app.api.routes.api_v1 import router as api_v1_router
@@ -23,6 +24,7 @@ from app.api.routes.workflows import router as workflows_router
 api_router = APIRouter()
 
 api_router.include_router(admin_router)
+api_router.include_router(agency_admin_router)
 api_router.include_router(affiliate_router)
 api_router.include_router(api_keys_router)
 api_router.include_router(api_v1_router)
