@@ -1,4 +1,4 @@
-from app.models.agency_commerce import AgencyCustomer, AgencyEntitlement, AgencyFulfilment, AgencyOrder
+from app.models.agency_commerce import AgencyCustomer, AgencyEntitlement, AgencyFulfilment, AgencyMemberAccessToken, AgencyOrder
 from app.models.affiliate import Affiliate, Commission, Referral
 from app.models.base import Base
 from app.models.billing import Plan, Subscription
@@ -51,6 +51,7 @@ __all__ = [
     "AgencyCustomer",
     "AgencyEntitlement",
     "AgencyFulfilment",
+    "AgencyMemberAccessToken",
     "AgencyOrder",
     "AdminSetting",
     "Affiliate",
