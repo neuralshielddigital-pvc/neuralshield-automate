@@ -18,6 +18,7 @@ from app.models.billing import Payment, Plan, Subscription
 from app.models.enums import SubscriptionStatus
 from app.models.system import WebhookEvent
 from app.models.user import User
+from app.services.agency_commerce_service import AgencyCommerceService
 
 
 class PaddleWebhookService:
@@ -336,6 +337,13 @@ class PaddleWebhookService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid Paddle transaction payload.",
             )
+
+        if event_type == "transaction.completed":
+            agency_service = AgencyCommerceService(self.db)
+
+            if agency_service.is_agency_transaction(data):
+                agency_service.handle_completed_transaction(data)
+                return
 
         transaction_id = str(data.get("id") or "").strip()
 

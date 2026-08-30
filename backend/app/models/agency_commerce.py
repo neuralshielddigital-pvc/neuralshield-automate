@@ -21,9 +21,9 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 class AgencyCustomer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "agency_customers"
 
-    email: Mapped[str] = mapped_column(
+    email: Mapped[str | None] = mapped_column(
         String(320),
-        nullable=False,
+        nullable=True,
         unique=True,
         index=True,
     )
