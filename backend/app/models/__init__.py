@@ -1,3 +1,4 @@
+from app.models.agency_commerce import AgencyCustomer, AgencyEntitlement, AgencyFulfilment, AgencyOrder
 from app.models.affiliate import Affiliate, Commission, Referral
 from app.models.base import Base
 from app.models.billing import Plan, Subscription
@@ -47,6 +48,10 @@ from app.models.workflow_template import WorkflowTemplate
 
 __all__ = [
     "APIKey",
+    "AgencyCustomer",
+    "AgencyEntitlement",
+    "AgencyFulfilment",
+    "AgencyOrder",
     "AdminSetting",
     "Affiliate",
     "AuditLog",
