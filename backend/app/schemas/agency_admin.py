@@ -9,7 +9,7 @@ class AgencyCustomerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    email: EmailStr
+    email: EmailStr | None
     name: str | None
     agency_name: str | None
     paddle_customer_id: str | None
