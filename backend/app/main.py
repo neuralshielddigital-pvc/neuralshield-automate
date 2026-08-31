@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", settings.REQUEST_ID_HEADER],
+        expose_headers=["Content-Disposition"],
     )
 
     @app.exception_handler(Exception)
