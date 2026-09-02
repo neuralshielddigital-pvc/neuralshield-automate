@@ -272,7 +272,7 @@ const sections = [
     ),
   },
   {
-    title: "12. Billing and Paddle Payments",
+    title: "12. Billing and Payment Providers",
     content: (
       <>
         <p>
