@@ -42,7 +42,8 @@ const sections = [
           <li>
             <strong>Billing information:</strong> subscription plan, transaction
             identifiers, payment status, billing history, and limited payment
-            metadata supplied by Paddle. We do not store full card numbers.
+            metadata supplied by payment providers such as Paddle or Digistore24.
+            We do not store full card numbers.
           </li>
           <li>
             <strong>Workflow information:</strong> workflow names, triggers,
@@ -194,7 +195,7 @@ const sections = [
         <ul>
           <li>Cloud and hosting providers, including AWS and Cloudflare.</li>
           <li>Database infrastructure providers, including Neon.</li>
-          <li>Payment processors, including Paddle.</li>
+          <li>Payment processors and merchants of record, including Paddle and Digistore24.</li>
           <li>Email delivery providers.</li>
           <li>Integration providers, including Google and Slack.</li>
           <li>AI service providers when you use AI workflow actions.</li>
