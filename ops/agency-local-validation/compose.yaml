@@ -1,0 +1,38 @@
+name: nsd-agency-local-validation
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    network_mode: none
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      POSTGRES_DB: nsd_agency_test_delivery
+      POSTGRES_PASSWORD: synthetic-bootstrap-only
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/agency-test.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d nsd_agency_test_delivery"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+
+  tests:
+    build:
+      context: ../..
+      dockerfile: ops/agency-local-validation/Dockerfile
+    network_mode: service:postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AGENCY_TEST_DATABASE_URL: postgresql+psycopg://agency_test:synthetic-test-only@127.0.0.1:5432/nsd_agency_test_delivery
+      AGENCY_TEST_ALLOW_ISOLATED_POSTGRES: "yes"
+      ENVIRONMENT: test
+      AUTOMATION_BACKGROUND_WORKER_ENABLED: "false"
+      AGENCY_STARTER_DELIVERY_ENABLED: "false"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
