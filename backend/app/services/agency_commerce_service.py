@@ -102,9 +102,11 @@ class AgencyCommerceService:
         if not isinstance(custom_data, dict):
             custom_data = {}
 
-        email = self._optional_email(
-            customer_payload.get("email")
-            or custom_data.get("email")
+        # Starter recipient identity is resolved by its trusted delivery worker.
+        # Preserve the existing manual delivery path for other Agency products.
+        starter_delivery = catalog["product_key"] == "starter-toolkit"
+        email = None if starter_delivery else self._optional_email(
+            customer_payload.get("email") or custom_data.get("email")
         )
 
         customer = (
@@ -147,7 +149,21 @@ class AgencyCommerceService:
 
         amount = self._extract_total_usd(data)
 
-        if amount != catalog["amount"]:
+        # Validate the configured unit price, not the tax-inclusive total.
+        items = data.get("items") or []
+        item = items[0] if len(items) == 1 else {}
+        price = item.get("price") or {}
+        unit = price.get("unit_price") or {}
+        if (
+            data.get("status") != "completed"
+            or len(items) != 1
+            or type(item.get("quantity")) is not int
+            or item["quantity"] != 1
+            or price.get("billing_cycle") is not None
+            or unit.get("currency_code") != "USD"
+            or str(unit.get("amount")) != str(int(catalog["amount"] * 100))
+            or amount <= 0
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Agency Paddle transaction amount mismatch.",

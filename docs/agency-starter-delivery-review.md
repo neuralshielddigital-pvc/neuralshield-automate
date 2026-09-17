@@ -65,21 +65,14 @@ Run from `backend` with the repository's development dependencies:
 python -m pytest tests/test_agency_starter_delivery.py tests/test_agency_member_resources.py tests/test_agency_member_service.py tests/test_agency_commerce_service.py -q
 ```
 
-## Remaining purchase-to-delivery work
+## Automatic delivery follow-up
 
-The existing Agency commerce handler commits an order, entitlement and pending
-fulfilment. It does not invoke the member-access email sender. When Paddle's
-transaction payload lacks a customer email, it records
-`pending_customer_enrichment`; the inspected code does not implement the customer
-lookup and subsequent automatic dispatch. The existing access-request endpoint
-requires an eligible customer's email already to be present.
-
-Before campaigning, implement and test trusted customer-email enrichment,
-automatic dispatch with bounded retries/idempotency and failure visibility, then
-verify the payment-to-email-link-to-download flow in an approved test environment.
-Do not mark an email as received based only on an SMTP send attempt. Tax/currency,
-refund/revocation and real-provider handling also need end-to-end validation;
-this asset change does not certify them.
+The original review identified missing customer-email enrichment and automatic
+email dispatch. These are now implemented on this branch; see
+[automatic delivery review](agency-automatic-delivery-review.md) for the current
+behavior, tests, migration, disabled-by-default switch and remaining provider
+acceptance requirements. The original 26-test evidence above describes the asset
+integration alone, not the follow-up payment-to-access flow.
 
 ## Deployment review
 

@@ -49,11 +49,11 @@ def purchase(db, price='pri_01kzx9mrs5g2bxgjgqwfcb4med', amount='2700'):
         'id': 'txn_synthetic_' + unique,
         'customer_id': 'ctm_synthetic_' + unique,
         'customer': {'email': unique + '@example.invalid'},
-        'currency_code': 'USD',
-        'items': [{'price': {'id': price}}],
+        'currency_code': 'USD', 'status': 'completed',
+        'items': [{'quantity': 1, 'price': {'id': price, 'unit_price': {'amount': amount, 'currency_code': 'USD'}, 'billing_cycle': None}}],
         'details': {'totals': {'total': amount}},
     })
-    customer = db.query(AgencyCustomer).filter_by(email=unique + '@example.invalid').one()
+    customer = db.query(AgencyCustomer).filter_by(paddle_customer_id='ctm_synthetic_' + unique).one()
     token = AgencyMemberService(db)._create_member_session(customer.id)
     return result, customer, {'Authorization': 'Bearer ' + token}
 
@@ -90,7 +90,7 @@ def test_synthetic_completed_purchase_lists_and_downloads_pack(delivery):
     assert response.headers['x-content-type-options'] == 'nosniff'
     assert ZipFile(BytesIO(response.content)).testzip() is None
     # Email dispatch remains a separate gap in the existing purchase handler.
-    assert db.query(AgencyFulfilment).one().status == 'pending'
+    assert db.query(AgencyFulfilment).one().status == 'pending_customer_enrichment'
 
 
 @pytest.mark.parametrize('auth', [{}, {'Authorization': 'Bearer invalid'}])

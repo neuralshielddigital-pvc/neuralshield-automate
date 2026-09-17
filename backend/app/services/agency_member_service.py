@@ -63,19 +63,8 @@ class AgencyMemberService:
 
         raw_token = self._create_access_token(customer.id)
 
-        access_url = (
-            "https://agency.neuralshielddigital.com/member/"
-            f"?token={quote(raw_token, safe='')}"
-        )
-
         subject = "Your NeuralShield Agency member access link"
-        body = (
-            "Your secure NeuralShield Agency member access link is ready.\n\n"
-            f"{access_url}\n\n"
-            "This link expires in 30 minutes and can only be used once.\n\n"
-            "If you did not request this link, you can ignore this email.\n\n"
-            "NeuralShield Digital"
-        )
+        body = self.access_email_body(raw_token)
 
         try:
             EmailService().send_email(
@@ -109,12 +98,27 @@ class AgencyMemberService:
         )
 
         for fulfilment in pending:
-            fulfilment.status = "delivered"
+            fulfilment.status = "email_submitted"
             fulfilment.destination = normalized
-            fulfilment.delivered_at = now
+            fulfilment.email_submitted_at = now
             fulfilment.last_error = None
 
         self.db.commit()
+
+    @staticmethod
+    def access_email_body(raw_token: str) -> str:
+        access_url = (
+            "https://agency.neuralshielddigital.com/member/"
+            f"?token={quote(raw_token, safe='')}"
+        )
+        return (
+            "Your NeuralShield Agency resources are ready.\n\n"
+            f"Open your secure member access link:\n{access_url}\n\n"
+            "This link expires in 30 minutes and can only be used once.\n"
+            "Download your purchased resources after opening the link.\n"
+            "For a new link, visit https://agency.neuralshielddigital.com/member/\n\n"
+            "Support: support@neuralshielddigital.com\nNeuralShield Digital"
+        )
 
     def _create_access_token(
         self,
@@ -169,12 +173,7 @@ class AgencyMemberService:
 
         now = datetime.now(timezone.utc)
 
-        if (
-            record is None
-            or record.revoked_at is not None
-            or record.used_at is not None
-            or record.expires_at <= now
-        ):
+        if record is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Member access link is invalid or expired.",
@@ -185,13 +184,24 @@ class AgencyMemberService:
             record.customer_id,
         )
 
-        if customer is None:
+        if customer is None or customer.status != "active":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Member access link is invalid or expired.",
             )
 
-        record.used_at = now
+        if not self.active_entitlements(customer.id):
+            raise HTTPException(status_code=401, detail="Member access link is invalid or expired.")
+        # Compare-and-set in the database prevents simultaneous token reuse.
+        claimed = self.db.query(AgencyMemberAccessToken).filter(
+            AgencyMemberAccessToken.id == record.id,
+            AgencyMemberAccessToken.used_at.is_(None),
+            AgencyMemberAccessToken.revoked_at.is_(None),
+            AgencyMemberAccessToken.expires_at > now,
+        ).update({"used_at": now}, synchronize_session=False)
+        if claimed != 1:
+            self.db.rollback()
+            raise HTTPException(status_code=401, detail="Member access link is invalid or expired.")
         self.db.commit()
 
         session_token = self._create_member_session(
@@ -235,7 +245,7 @@ class AgencyMemberService:
             customer_id,
         )
 
-        if customer is None:
+        if customer is None or customer.status != "active":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid member session.",

@@ -58,5 +58,9 @@ class AgencyFulfilmentRead(BaseModel):
     destination: str | None
     delivered_at: datetime | None
     last_error: str | None
+    attempt_count: int
+    next_attempt_at: datetime | None
+    claimed_at: datetime | None
+    email_submitted_at: datetime | None
     created_at: datetime
     updated_at: datetime

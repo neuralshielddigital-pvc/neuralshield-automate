@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     AGENCY_PILOT_ORIGIN: str = "https://neuralshield-agency-pilot.neuralshielddigital.chatgpt.site"
     AGENCY_PILOT_PRODUCTION_ORIGIN: str = "https://agency.neuralshielddigital.com"
+    AGENCY_STARTER_DELIVERY_ENABLED: bool = False
     TRUSTED_HOSTS: list[str] = Field(default_factory=lambda: ["localhost", "127.0.0.1", "*.localhost", "testserver"])
     REQUEST_TIMEOUT_SECONDS: float = 30.0
 

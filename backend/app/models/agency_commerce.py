@@ -6,6 +6,7 @@ from uuid import UUID
 
 from sqlalchemy import (
     DateTime,
+    Integer,
     ForeignKey,
     Numeric,
     String,
@@ -173,6 +174,10 @@ class AgencyFulfilment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         Text,
         nullable=True,
     )
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AgencyMemberAccessToken(
