@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<meta name="referrer" content="no-referrer"><title>Agency Starter sandbox checkout</title>
+<style>body{font:18px system-ui;max-width:720px;margin:70px auto;padding:24px;color:#16332d}button{padding:16px;background:#16332d;color:white;border:0;border-radius:8px}button:disabled{opacity:.5}</style>
+<h1>Agency Starter — sandbox test</h1><p>$27 USD · one-time · test payment only</p>
+<p id="status">Checking test setup…</p><button id="buy" disabled>Open sandbox checkout</button>
+<script>
+(async()=>{
+  const status=document.getElementById('status'), buy=document.getElementById('buy');
+  try {
+    const c=await fetch('/checkout-config',{cache:'no-store'}).then(r=>r.json());
+    if(!c.ready || !c.clientToken.startsWith('test_')) {status.textContent='Test is not armed, or its one order has already been received.';return;}
+    const script=document.createElement('script');script.src='https://cdn.paddle.com/paddle/v2/paddle.js';
+    await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=reject;document.head.append(script);});
+    Paddle.Environment.set('sandbox');
+    Paddle.Initialize({token:c.clientToken,eventCallback:event=>{
+      if(event.name==='checkout.completed'){buy.disabled=true;status.textContent='Checkout completed. Wait for the access email; delivery is verified separately.';}
+    }});
+    status.textContent='Test recipient: '+c.email;buy.disabled=false;
+    buy.onclick=()=>Paddle.Checkout.open({items:[{priceId:c.priceId,quantity:1}],customer:{email:c.email}});
+  }catch(e){status.textContent='Checkout setup failed. Check local configuration.';}
+})();
+</script></html>

@@ -20,3 +20,5 @@ backend/.env.backup-before-cors-fix
 **/.env.save
 **/.env.backup-*
 **/.env.local.backup-*
+ops/agency-provider-sandbox/sandbox.env
+agency-postgres-test.log

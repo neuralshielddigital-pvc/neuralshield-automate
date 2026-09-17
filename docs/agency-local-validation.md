@@ -1,5 +1,11 @@
 # Agency local PostgreSQL validation
 
+**Later owner-operated result:** the pinned setup was built on Windows and passed
+39 tests on PostgreSQL 16.15, with 8 warnings in 7.82 seconds and container exit
+code 0. Container cleanup was confirmed in screenshots. See
+`agency-provider-sandbox-runbook.md` for evidence limits and the next test stage.
+The preparation notes below describe the state before that owner-operated run.
+
 The owner confirmed that only the live website exists. This prepared local test
 option does not require a new cloud server. It is not a staging website and does
 not yet test a real Paddle checkout. Never run these commands on the live server.

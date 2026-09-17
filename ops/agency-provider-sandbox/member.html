@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<meta name="referrer" content="no-referrer"><title>Agency Starter test access</title>
+<style>body{font:18px system-ui;max-width:720px;margin:70px auto;padding:24px;color:#16332d}button{display:block;margin:12px 0;padding:12px}li{margin:20px 0}</style>
+<h1>Agency Starter test access</h1><p id="status">Open your access email on this computer.</p><ul id="resources"></ul>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  const raw=new URL(location.href).searchParams.get('token');
+  history.replaceState(null,'','/member/');
+  if(!raw)return;
+  try {
+    const response=await fetch('/agency-member/consume',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:raw})});
+    if(!response.ok)throw Error();
+    const data=await response.json();status.textContent='Access verified. Download your Starter resources below.';
+    for(const item of data.resources){
+      const li=document.createElement('li'),title=document.createElement('span'),button=document.createElement('button');
+      title.textContent=item.title;button.textContent='Download';li.append(title,button);document.getElementById('resources').append(li);
+      button.onclick=async()=>{
+        button.disabled=true;
+        try {
+          const r=await fetch('/agency-member/resources/'+encodeURIComponent(item.id),{headers:{Authorization:'Bearer '+data.member_token}});
+          if(!r.ok)throw Error();
+          const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');
+          a.href=url;a.download=item.id+(item.media_type==='application/zip'?'.zip':item.media_type==='text/csv'?'.csv':'.md');a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+        }catch(e){status.textContent='Download failed. The access may have expired.';}
+        finally{button.disabled=false;}
+      };
+    }
+  }catch(e){status.textContent='Access link is invalid, expired or already used. Contact the test operator.';}
+})();
+</script></html>

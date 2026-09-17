@@ -1,0 +1,6 @@
+CREATE ROLE agency_test LOGIN PASSWORD 'synthetic-test-only'
+  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+REVOKE ALL ON DATABASE nsd_agency_test_provider FROM PUBLIC;
+GRANT CONNECT ON DATABASE nsd_agency_test_provider TO agency_test;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE, CREATE ON SCHEMA public TO agency_test;

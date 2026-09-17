@@ -1,5 +1,10 @@
 # Agency provider-validation readiness
 
+**Subsequent checkpoint:** owner-operated PostgreSQL validation passed, sandbox
+Starter price and test recipient were confirmed, and a separate local provider
+harness was prepared. See `agency-provider-sandbox-runbook.md` for current state.
+The original checkpoint below is retained as historical evidence.
+
 18 September 2026. This checkpoint adds sandbox separation and a guarded
 PostgreSQL runner. It does not certify PostgreSQL or real Paddle acceptance.
 

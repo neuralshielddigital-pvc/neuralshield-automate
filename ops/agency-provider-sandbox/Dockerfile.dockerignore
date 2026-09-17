@@ -1,0 +1,17 @@
+**
+!backend/
+!backend/requirements.txt
+!backend/app/
+!backend/app/**
+!ops/
+!ops/agency-provider-sandbox/
+!ops/agency-provider-sandbox/Dockerfile
+!ops/agency-provider-sandbox/sandbox_app.py
+!ops/agency-provider-sandbox/checkout.html
+!ops/agency-provider-sandbox/member.html
+**/.env*
+**/sandbox.env
+**/__pycache__/
+**/*.pyc
+**/*.pem
+**/*.key
