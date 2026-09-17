@@ -65,31 +65,37 @@ class Mailer:
 
 
 @pytest.fixture
-def flow(monkeypatch):
+def flow(monkeypatch, agency_engine_factory):
     monkeypatch.setattr(settings, 'AGENCY_STARTER_DELIVERY_ENABLED', True)
     monkeypatch.setattr(settings, 'PADDLE_ENVIRONMENT', 'sandbox')
+    monkeypatch.setattr(settings, 'AGENCY_STARTER_SANDBOX_PRICE_ID', 'pri_' + 's' * 26)
+    monkeypatch.setattr(settings, 'AGENCY_DELIVERY_TEST_RECIPIENT', 'buyer@example.com')
+    monkeypatch.setattr(settings, 'AGENCY_MEMBER_BASE_URL', 'http://127.0.0.1:8080/member/')
     monkeypatch.setattr(settings, 'PADDLE_API_BASE_URL', 'https://sandbox-api.paddle.com')
     monkeypatch.setattr(settings, 'PADDLE_API_KEY', 'synthetic-test-key-never-sent')
     monkeypatch.setattr(settings, 'PADDLE_WEBHOOK_SECRET', 'synthetic-test-webhook-secret')
     monkeypatch.setattr(settings, 'SECRET_KEY', 'synthetic-session-secret-for-tests-only')
-    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
-    for model in (AgencyCustomer, AgencyOrder, AgencyEntitlement, AgencyFulfilment, AgencyMemberAccessToken, WebhookEvent):
-        model.__table__.create(engine)
-    transaction = {
-        'id': 'txn_' + uuid4().hex[:26], 'customer_id': 'ctm_' + uuid4().hex[:26],
-        'status': 'completed', 'currency_code': 'USD',
-        'items': [{'quantity': 1, 'price': {'id': 'pri_01kzx9mrs5g2bxgjgqwfcb4med', 'unit_price': {'amount': '2700', 'currency_code': 'USD'}, 'billing_cycle': None}}],
-        'details': {'totals': {'total': '2700'}},
-        'custom_data': {'email': 'untrusted@example.com'},
-    }
-    with Session(engine) as db:
-        app = FastAPI()
-        app.include_router(member_router, prefix='/api')
-        app.include_router(webhook_router, prefix='/api')
-        app.dependency_overrides[db_session] = lambda: db
-        with TestClient(app) as client:
-            yield db, client, transaction, Provider(transaction), Mailer()
-    engine.dispose()
+    database = agency_engine_factory()
+    engine = database.__enter__()
+    try:
+        for model in (AgencyCustomer, AgencyOrder, AgencyEntitlement, AgencyFulfilment, AgencyMemberAccessToken, WebhookEvent):
+            model.__table__.create(engine)
+        transaction = {
+            'id': 'txn_' + uuid4().hex[:26], 'customer_id': 'ctm_' + uuid4().hex[:26],
+            'status': 'completed', 'currency_code': 'USD',
+            'items': [{'quantity': 1, 'price': {'id': 'pri_' + 's' * 26, 'unit_price': {'amount': '2700', 'currency_code': 'USD'}, 'billing_cycle': None}}],
+            'details': {'totals': {'total': '2700'}},
+            'custom_data': {'email': 'untrusted@example.com'},
+        }
+        with Session(engine) as db:
+            app = FastAPI()
+            app.include_router(member_router, prefix='/api')
+            app.include_router(webhook_router, prefix='/api')
+            app.dependency_overrides[db_session] = lambda: db
+            with TestClient(app) as client:
+                yield db, client, transaction, Provider(transaction), Mailer()
+    finally:
+        database.__exit__(None, None, None)
 
 
 def webhook(client, transaction, event_id='evt_synthetic_completed', signature_valid=True):
@@ -324,26 +330,33 @@ def test_migration_round_trip_on_local_schema(flow):
         assert {'attempt_count', 'next_attempt_at', 'claimed_at', 'email_submitted_at'} <= names
 
 
-def test_two_workers_only_one_smtp_attempt(flow, tmp_path):
+def test_two_workers_only_one_smtp_attempt(flow, tmp_path, agency_engine_factory):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
     _, _, txn, provider, mailer = flow
-    engine = create_engine('sqlite:///' + str(tmp_path / 'workers.db'), connect_args={'check_same_thread': False})
-    for model in (AgencyCustomer, AgencyOrder, AgencyEntitlement, AgencyFulfilment, AgencyMemberAccessToken):
-        model.__table__.create(engine)
-    with Session(engine) as db:
-        AgencyCommerceService(db).handle_completed_transaction(txn)
-        identifier = db.query(AgencyFulfilment).one().id
-    barrier = Barrier(2)
-    def work():
+    import os
+    database = agency_engine_factory() if os.environ.get('AGENCY_TEST_DATABASE_URL') else None
+    engine = database.__enter__() if database else create_engine('sqlite:///' + str(tmp_path / 'workers.db'), connect_args={'check_same_thread': False})
+    try:
+        for model in (AgencyCustomer, AgencyOrder, AgencyEntitlement, AgencyFulfilment, AgencyMemberAccessToken):
+            model.__table__.create(engine)
         with Session(engine) as db:
-            barrier.wait(timeout=5)
-            return AgencyDeliveryService(db, provider, mailer).process_one(identifier)
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(work) for _ in range(2)]
-        assert sorted(f.result(timeout=10) for f in futures) == [False, True]
-    assert len(mailer.messages) == 1
-    engine.dispose()
+            AgencyCommerceService(db).handle_completed_transaction(txn)
+            identifier = db.query(AgencyFulfilment).one().id
+        barrier = Barrier(2)
+        def work():
+            with Session(engine) as db:
+                barrier.wait(timeout=5)
+                return AgencyDeliveryService(db, provider, mailer).process_one(identifier)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(work) for _ in range(2)]
+            assert sorted(f.result(timeout=10) for f in futures) == [False, True]
+        assert len(mailer.messages) == 1
+    finally:
+        if database:
+            database.__exit__(None, None, None)
+        else:
+            engine.dispose()
 
 
 def test_old_failure_cannot_overwrite_new_claim(flow):
@@ -373,8 +386,9 @@ def test_revoked_access_link_and_inactive_customer_rejected(flow):
 
 
 
-def test_other_products_keep_existing_manual_delivery_identity(flow):
+def test_other_products_keep_existing_manual_delivery_identity(flow, monkeypatch):
     db, client, txn, provider, mailer = flow
+    monkeypatch.setattr(settings, 'PADDLE_ENVIRONMENT', 'production')
     txn['items'][0]['price']['id'] = 'pri_01m1a363nz4srjzs7qh7jk7zhw'
     txn['items'][0]['price']['unit_price']['amount'] = '6700'
     txn['details']['totals']['total'] = '6700'
@@ -382,3 +396,126 @@ def test_other_products_keep_existing_manual_delivery_identity(flow):
     assert db.query(AgencyCustomer).one().email == 'untrusted@example.com'
     assert AgencyDeliveryService(db, provider, mailer).run_batch()['processed'] == 0
     assert not mailer.messages
+
+
+@pytest.fixture
+def local_smtp_receiver():
+    import socketserver
+    import threading
+    messages = []
+
+    class Handler(socketserver.StreamRequestHandler):
+        def handle(self):
+            self.connection.settimeout(5)
+            self.wfile.write(b'220 localhost synthetic test SMTP\r\n')
+            collecting = False
+            data = bytearray()
+            while True:
+                line = self.rfile.readline(65536)
+                if not line:
+                    break
+                if collecting:
+                    if line == b'.\r\n':
+                        messages.append(bytes(data))
+                        collecting = False
+                        self.wfile.write(b'250 Message accepted by local test receiver\r\n')
+                    else:
+                        data.extend(line[1:] if line.startswith(b'..') else line)
+                    continue
+                command = line.split(b' ', 1)[0].strip().upper()
+                if command in (b'EHLO', b'HELO'):
+                    self.wfile.write(b'250 localhost\r\n')
+                elif command in (b'MAIL', b'RCPT', b'RSET', b'NOOP'):
+                    self.wfile.write(b'250 OK\r\n')
+                elif command == b'DATA':
+                    collecting = True
+                    data.clear()
+                    self.wfile.write(b'354 End with dot\r\n')
+                elif command == b'QUIT':
+                    self.wfile.write(b'221 Bye\r\n')
+                    break
+                else:
+                    self.wfile.write(b'502 Unsupported in local receiver\r\n')
+
+    with socketserver.ThreadingTCPServer(('127.0.0.1', 0), Handler) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield server.server_address[1], messages
+        finally:
+            server.shutdown()
+            thread.join(timeout=5)
+
+
+def test_real_smtp_protocol_and_access_download(flow, local_smtp_receiver):
+    from email import policy
+    from email.parser import BytesParser
+    from app.core.config import Settings
+    from app.services.email_service import EmailService
+    db, client, txn, provider, _ = flow
+    port, messages = local_smtp_receiver
+    smtp_settings = Settings(_env_file=None, SMTP_HOST='127.0.0.1', SMTP_PORT=port,
+                             SMTP_USE_TLS=False, SMTP_USERNAME='', SMTP_PASSWORD='',
+                             SMTP_FROM_EMAIL='test-sender@example.com')
+    row, _ = queue(flow)
+    service = AgencyDeliveryService(db, provider, EmailService(smtp_settings))
+    assert service.run_batch()['processed'] == 1
+    assert len(messages) == 1
+    message = BytesParser(policy=policy.default).parsebytes(messages[0])
+    assert message['To'] == 'buyer@example.com'
+    body = message.get_content()
+    assert 'http://127.0.0.1:8080/member/?token=' in body
+    assert 'agency.neuralshielddigital.com' not in body
+    token = re.search(r'\?token=([^\s]+)', body).group(1)
+    access = client.post('/api/agency-member/consume', json={'token': token})
+    assert access.status_code == 200
+    session = access.json()['member_token']
+    download = client.get('/api/agency-member/resources/starter-download-pack', headers={'Authorization': 'Bearer ' + session})
+    assert download.status_code == 200 and download.content.startswith(b'PK')
+    service.run_batch()
+    assert len(messages) == 1 and row.status == 'email_submitted'
+
+
+@pytest.mark.parametrize('case', ['missing_price', 'live_price', 'wrong_recipient', 'live_member_url'])
+def test_sandbox_safety_gates(flow, monkeypatch, case):
+    from app.services.agency_commerce_service import agency_price_catalog
+    _, _, _, provider, mailer = flow
+    if case == 'missing_price':
+        monkeypatch.setattr(settings, 'AGENCY_STARTER_SANDBOX_PRICE_ID', '')
+        assert not agency_price_catalog()
+        return
+    if case == 'live_price':
+        monkeypatch.setattr(settings, 'AGENCY_STARTER_SANDBOX_PRICE_ID', 'pri_01kzx9mrs5g2bxgjgqwfcb4med')
+        assert not agency_price_catalog()
+        return
+    row, service = queue(flow)
+    if case == 'wrong_recipient':
+        monkeypatch.setattr(settings, 'AGENCY_DELIVERY_TEST_RECIPIENT', 'someone-else@example.com')
+    else:
+        monkeypatch.setattr(settings, 'AGENCY_MEMBER_BASE_URL', 'https://agency.neuralshielddigital.com/member/')
+    service.run_batch()
+    assert row.status == 'failed' and not mailer.messages
+
+
+def test_sandbox_price_cannot_enable_live_checkout(flow, monkeypatch):
+    from app.services.agency_commerce_service import agency_price_catalog, AGENCY_PRICE_CATALOG
+    monkeypatch.setattr(settings, 'PADDLE_ENVIRONMENT', 'production')
+    assert agency_price_catalog() == AGENCY_PRICE_CATALOG
+    assert settings.AGENCY_STARTER_SANDBOX_PRICE_ID not in agency_price_catalog()
+
+
+def test_postgres_runner_rejects_production_style_urls(tmp_path):
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    runner = Path(__file__).resolve().parents[2] / 'scripts/run_agency_postgres_validation.py'
+    for target in ('postgresql+psycopg://user:test@db.example.com/nsd_agency_test_one',
+                   'postgresql+psycopg://user:test@127.0.0.1/production',
+                   'postgresql+psycopg://user:test@127.0.0.1/nsd_agency_test_one?host=example.com'):
+        env = os.environ.copy()
+        env.update(AGENCY_TEST_DATABASE_URL=target, AGENCY_TEST_ALLOW_ISOLATED_POSTGRES='yes')
+        result = subprocess.run([sys.executable, str(runner)], env=env, capture_output=True, text=True, timeout=10)
+        assert result.returncode == 2
+        assert 'no connection attempted' in result.stdout
+        assert target not in result.stdout + result.stderr

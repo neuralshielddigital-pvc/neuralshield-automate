@@ -73,7 +73,7 @@ Provider contracts checked against Paddle's official documentation:
 
 ## Verification
 
-81 focused local tests passed (22 existing deprecation warnings), in 1.5 seconds.
+Initial automatic-delivery checkpoint: 81 focused local tests passed (22 dependency deprecation warnings). The follow-up [provider-validation readiness](agency-provider-validation-readiness.md) records 88 tests including real loopback SMTP, sandbox separation and the prepared PostgreSQL runner.
 
 The focused local test command covers signed webhook receipt, duplicate event and
 transaction IDs, trusted email lookup, link consumption, ZIP download, invalid
@@ -81,7 +81,7 @@ signatures, identity mismatches, revoked purchases, retry limits, stale claims,
 SMTP uncertainty, disabled worker behavior, tax-inclusive totals, price guards,
 SQLite migration round-trip, competing worker sessions and existing billing tests.
 
-All provider and SMTP calls in the new flow tests are fakes. Tests use synthetic
+Provider calls remain fakes. Initial delivery tests use fake SMTP; the follow-up also tests real SMTP against a loopback receiver only. Tests use synthetic
 identities and temporary SQLite only. PostgreSQL migration SQL was generated
 without a database connection. These checks are not hosted PostgreSQL or real
 Paddle/SMTP acceptance evidence. Existing FastAPI/python-jose deprecation warnings
@@ -100,8 +100,7 @@ before merging or promoting any branch.
   pending Starter fulfilments; inspect that backlog before activation.
 - Existing Paddle configuration must target the intended environment and have
   `customer.read` and transaction-read permissions. Never place credentials in
-  the repo or chat. Current price IDs are production IDs; a real sandbox test
-  needs separately reviewed sandbox product mappings, not guessed replacements.
+  the repo or chat. Production price IDs remain fixed. A real sandbox test uses the separately configured `AGENCY_STARTER_SANDBOX_PRICE_ID`, plus an approved test recipient and member URL; see the follow-up readiness document.
 - Existing SMTP configuration and sender must be verified. A bounded test needs
   an approved owner-controlled recipient. No marketing emails are introduced.
 - Run a controlled provider payment/access/download test, including failure and

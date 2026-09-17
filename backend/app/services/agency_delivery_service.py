@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 import re
 from functools import partial
+from urllib.parse import urlsplit
 
 from email_validator import validate_email, EmailNotValidError
 from sqlalchemy import or_, select, update
@@ -107,6 +108,7 @@ class AgencyDeliveryService:
         try:
             _, _, customer = self._eligible(row)
             token = AgencyMemberService(self.db)._create_access_token(customer.id)
+            body = AgencyMemberService.access_email_body(token)
         except DeliveryIssue as exc:
             fail(exc.code, False)
             return True
@@ -126,7 +128,7 @@ class AgencyDeliveryService:
             self.emailer.send_email(
                 to_email=customer.email,
                 subject='Your NeuralShield Agency Starter Toolkit access',
-                body=AgencyMemberService.access_email_body(token),
+                body=body,
             )
         except Exception:
             fail('smtp_outcome_unknown', False, 'delivery_unknown')
@@ -153,6 +155,10 @@ class AgencyDeliveryService:
     def _verified_email(self, order, customer):
         environment = settings.PADDLE_ENVIRONMENT.strip().lower()
         expected_base = {'production': 'https://api.paddle.com', 'sandbox': 'https://sandbox-api.paddle.com'}.get(environment)
+        if environment == 'sandbox':
+            member_host = urlsplit(settings.AGENCY_MEMBER_BASE_URL).hostname
+            if member_host in ('agency.neuralshielddigital.com', 'app.neuralshielddigital.com'):
+                raise DeliveryIssue('sandbox_member_url_unsafe')
         if (not settings.PADDLE_API_KEY or not expected_base
                 or settings.PADDLE_API_BASE_URL.rstrip('/') != expected_base):
             raise DeliveryIssue('paddle_configuration_missing', True)
@@ -178,6 +184,8 @@ class AgencyDeliveryService:
             email = validate_email(remote.get('email', ''), check_deliverability=False).normalized.lower()
         except (EmailNotValidError, TypeError):
             raise DeliveryIssue('provider_email_invalid') from None
+        if environment == 'sandbox' and email != settings.AGENCY_DELIVERY_TEST_RECIPIENT.strip().lower():
+            raise DeliveryIssue('sandbox_recipient_not_allowed')
         # Legacy checkout-provided identities are not silently reassigned.
         if customer.email and customer.email.lower() != email:
             raise DeliveryIssue('customer_email_mismatch')

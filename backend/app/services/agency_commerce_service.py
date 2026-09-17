@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
+import re
+
+from app.core.config import settings
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -33,6 +36,17 @@ AGENCY_PRICE_CATALOG: dict[str, dict[str, Any]] = {
         "amount": Decimal("197.00"),
     },
 }
+
+
+def agency_price_catalog() -> dict[str, dict[str, Any]]:
+    environment = settings.PADDLE_ENVIRONMENT.strip().lower()
+    if environment == "production":
+        return AGENCY_PRICE_CATALOG
+    if environment == "sandbox":
+        price_id = settings.AGENCY_STARTER_SANDBOX_PRICE_ID.strip()
+        if re.fullmatch(r"pri_[a-z0-9]{26}", price_id) and price_id not in AGENCY_PRICE_CATALOG:
+            return {price_id: {"product_key": "starter-toolkit", "amount": Decimal("27.00")}}
+    return {}
 
 
 class AgencyCommerceService:
@@ -232,6 +246,7 @@ class AgencyCommerceService:
         if not isinstance(items, list):
             return None
 
+        active_catalog = agency_price_catalog()
         matches: list[tuple[str, dict[str, Any]]] = []
 
         for item in items:
@@ -245,9 +260,9 @@ class AgencyCommerceService:
 
             price_id = str(price.get("id") or "").strip()
 
-            if price_id in AGENCY_PRICE_CATALOG:
+            if price_id in active_catalog:
                 matches.append(
-                    (price_id, AGENCY_PRICE_CATALOG[price_id])
+                    (price_id, active_catalog[price_id])
                 )
 
         if not matches:

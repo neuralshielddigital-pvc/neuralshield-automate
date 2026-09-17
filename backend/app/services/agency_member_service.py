@@ -4,7 +4,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -46,7 +46,10 @@ class AgencyMemberService:
 
         # Intentionally do nothing for non-customers.
         # Route response remains identical to prevent enumeration.
-        if customer is None:
+        if customer is None or customer.status != "active":
+            return
+        if (settings.PADDLE_ENVIRONMENT.strip().lower() == "sandbox"
+                and normalized != settings.AGENCY_DELIVERY_TEST_RECIPIENT.strip().lower()):
             return
 
         active_entitlement = (
@@ -107,16 +110,22 @@ class AgencyMemberService:
 
     @staticmethod
     def access_email_body(raw_token: str) -> str:
-        access_url = (
-            "https://agency.neuralshielddigital.com/member/"
-            f"?token={quote(raw_token, safe='')}"
-        )
+        base_url = settings.AGENCY_MEMBER_BASE_URL.rstrip("/") + "/"
+        parsed = urlsplit(base_url)
+        if (parsed.query or parsed.fragment or parsed.username or parsed.password
+                or not parsed.hostname
+                or not (parsed.scheme == "https" or (parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "localhost", "::1")))):
+            raise ValueError("Invalid member access URL configuration.")
+        if (settings.PADDLE_ENVIRONMENT.strip().lower() == "sandbox"
+                and parsed.hostname in ("agency.neuralshielddigital.com", "app.neuralshielddigital.com")):
+            raise ValueError("Sandbox access links must use a test member portal.")
+        access_url = f"{base_url}?token={quote(raw_token, safe='')}"
         return (
             "Your NeuralShield Agency resources are ready.\n\n"
             f"Open your secure member access link:\n{access_url}\n\n"
             "This link expires in 30 minutes and can only be used once.\n"
             "Download your purchased resources after opening the link.\n"
-            "For a new link, visit https://agency.neuralshielddigital.com/member/\n\n"
+            f"For a new link, visit {base_url}\n\n"
             "Support: support@neuralshielddigital.com\nNeuralShield Digital"
         )
 

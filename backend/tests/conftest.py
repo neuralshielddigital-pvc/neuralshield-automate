@@ -88,3 +88,45 @@ def uuid_str() -> str:
 
 
 STATIC_UUID = UUID("00000000-0000-0000-0000-000000000001")
+
+
+@pytest.fixture
+def agency_engine_factory():
+    """Use SQLite normally; opt-in PostgreSQL uses disposable schemas only."""
+    import os
+    from contextlib import contextmanager
+    from sqlalchemy import create_engine
+    from sqlalchemy.engine import make_url
+    from sqlalchemy.pool import StaticPool
+
+    @contextmanager
+    def factory():
+        raw_url = os.environ.get('AGENCY_TEST_DATABASE_URL', '')
+        if not raw_url:
+            engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+            try:
+                yield engine
+            finally:
+                engine.dispose()
+            return
+        url = make_url(raw_url)
+        if (url.drivername != 'postgresql+psycopg'
+                or url.host not in ('127.0.0.1', '::1')
+                or not (url.database or '').startswith('nsd_agency_test_')
+                or url.query
+                or os.environ.get('AGENCY_TEST_ALLOW_ISOLATED_POSTGRES') != 'yes'):
+            raise ValueError('Only an explicitly confirmed loopback nsd_agency_test_ database is allowed')
+        schema = 'nsd_agency_test_' + uuid4().hex
+        control = create_engine(url)
+        with control.begin() as connection:
+            connection.exec_driver_sql(f'CREATE SCHEMA "{schema}"')
+        engine = create_engine(url, connect_args={'options': '-csearch_path=' + schema})
+        try:
+            yield engine
+        finally:
+            engine.dispose()
+            with control.begin() as connection:
+                connection.exec_driver_sql(f'DROP SCHEMA "{schema}" CASCADE')
+            control.dispose()
+
+    return factory
