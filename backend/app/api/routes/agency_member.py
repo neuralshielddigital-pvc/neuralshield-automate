@@ -164,4 +164,8 @@ def download_resource(
         path=path,
         filename=item["filename"],
         media_type=item["media_type"],
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )

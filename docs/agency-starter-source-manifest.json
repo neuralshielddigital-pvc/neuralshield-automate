@@ -1,0 +1,207 @@
+[
+  {
+    "name": "NSD_ACE_PLN001_30_Day_Implementation_Plan_V1.pdf",
+    "sha256": "72100c91f4b541f6fec90c64c4eba8b7058ae4020d3d9a7439970828e1a7bbda",
+    "snapshot": "SNAP-0017"
+  },
+  {
+    "name": "NSD_ACE_PLN001_30_Day_Implementation_Plan_V1.xlsx",
+    "sha256": "380d9beb029a99bca441df945d96491defdba20acc9b06089f777b3b2024f1b8",
+    "snapshot": "SNAP-0018"
+  },
+  {
+    "name": "NSD_ACE_TRN001_Quick_Start_and_Workflow_Walkthrough_Scripts_V1.docx",
+    "sha256": "f336ab38fbf4b5e62d9cb792274dcbda2d2d587bccd575d35452ddfc9a82d50b",
+    "snapshot": "SNAP-0019"
+  },
+  {
+    "name": "NSD_ACE_TRN001_Quick_Start_and_Workflow_Walkthrough_Scripts_V1.pdf",
+    "sha256": "76ab5a61f43b6452c4506dfaf17cc7a87cbb1fff967a339ab04d739847491fc1",
+    "snapshot": "SNAP-0020"
+  },
+  {
+    "name": "NSD_ACE_TRN002_Setup_and_Controlled_Pilot_Guide_V1.docx",
+    "sha256": "6212be55896ae801293f74759ea854b8bff43da7322e80ead4fb4ca1408b89a5",
+    "snapshot": "SNAP-0022"
+  },
+  {
+    "name": "NSD_ACE_TRN002_Setup_and_Controlled_Pilot_Guide_V1.pdf",
+    "sha256": "cfc99220ae24adb3c5d1f9664e42fece30fd7ea9e7835a9dd2d9feec3a25ac84",
+    "snapshot": "SNAP-0023"
+  },
+  {
+    "name": "NSD_ACE_15_Minute_Quick_Start_V1.docx",
+    "sha256": "d6d85d338aa39fa0fd413ee917b3b93a459a0b7b0b6a0b6b44efaf3e2a2caceb",
+    "snapshot": "SNAP-0024"
+  },
+  {
+    "name": "NSD_ACE_15_Minute_Quick_Start_V1.pdf",
+    "sha256": "03bac01eb0bbc284799653df7befc7c7c6553a4b8670d6e277cfc870798308cf",
+    "snapshot": "SNAP-0025"
+  },
+  {
+    "name": "NSD_ACE_Current_Process_Map_V1.docx",
+    "sha256": "7404b4f767cf922419f718bcbeb8bc9da4f332300dd0d6a5ba3f06b01f2e2609",
+    "snapshot": "SNAP-0026"
+  },
+  {
+    "name": "NSD_ACE_Current_Process_Map_V1.pdf",
+    "sha256": "0c4771eccfeef72868ebda321aefa7390fb475142b531e8973ffd3b34d348f4f",
+    "snapshot": "SNAP-0027"
+  },
+  {
+    "name": "NSD_ACE_First_Workflow_Selection_and_Approval_Planner_V1.pdf",
+    "sha256": "b89911ef8f623e583bb6c732d611a25e548401e172a0721bdd775c27c536ac79",
+    "snapshot": "SNAP-0028"
+  },
+  {
+    "name": "NSD_ACE_First_Workflow_Selection_and_Approval_Planner_V1.xlsx",
+    "sha256": "935bc18a58952bfd7d7db199ad3d34fb6df6883e7795ca332dcaf61827e85856",
+    "snapshot": "SNAP-0029"
+  },
+  {
+    "name": "NSD_ACE_Start_Here_Welcome_and_Product_Map_V1.docx",
+    "sha256": "6aef426a835dbd88d42f7ee1117ea99994aa2d63b5e0e238020df9694d4e903e",
+    "snapshot": "SNAP-0030"
+  },
+  {
+    "name": "NSD_ACE_Start_Here_Welcome_and_Product_Map_V1.pdf",
+    "sha256": "df2256b972ad3576c166d6a1d9026881daa3bf517c7a48d0f14f841e43e8b2f5",
+    "snapshot": "SNAP-0031"
+  },
+  {
+    "name": "NSD_ACE_Tool_and_Access_Inventory_V1.xlsx",
+    "sha256": "3f48a42dd131b83623ce06d1c3202dab6263863706a4c7759a25f25139566cd1",
+    "snapshot": "SNAP-0032"
+  },
+  {
+    "name": "NSD_ACE_Workflow_Readiness_Scorecard_V1.pdf",
+    "sha256": "d7ec755d58ee93cd47e9cebe507d366f78910b67ba2e756eb960bd197d7c1456",
+    "snapshot": "SNAP-0033"
+  },
+  {
+    "name": "NSD_ACE_Workflow_Readiness_Scorecard_V1.xlsx",
+    "sha256": "3daf74926619f5e1dcc0b82c974482d3d2c4a8c3ff1e520df1bd29b4d4879b76",
+    "snapshot": "SNAP-0034"
+  },
+  {
+    "name": "NSD_ACE_TRN003_Frequently_Asked_Questions_V1.html",
+    "sha256": "44049e308d05134d4c1395d92db378e5d65fa2bd0a9ad8d0bc51908ea1eaf42e",
+    "snapshot": "SNAP-0035"
+  },
+  {
+    "name": "NSD_ACE_TRN003_Frequently_Asked_Questions_V1.pdf",
+    "sha256": "701fb0f417cbf74fd1933e8d423907aa5fa3af1ce5273a8cd3d4089b48adf795",
+    "snapshot": "SNAP-0036"
+  },
+  {
+    "name": "NSD_ACE_TRN004_Troubleshooting_and_Support_Runbook_V1.html",
+    "sha256": "1f8a9ad156e8d7ac773726a261c6cbb018846f74e84580892914e26de0cdabde",
+    "snapshot": "SNAP-0037"
+  },
+  {
+    "name": "NSD_ACE_TRN004_Troubleshooting_and_Support_Runbook_V1.pdf",
+    "sha256": "9467c17b45d9f4a4b86e8212beabcbf51db7b36305ebb90f52612ba02957e735",
+    "snapshot": "SNAP-0038"
+  },
+  {
+    "name": "NSD_ACE_Agency_Niche_and_Service_Worksheet_V1.docx",
+    "sha256": "3a5af7f508208004ae55fa2eb7a358c1c1d0858170c71e45f9c52f88960e4fa1",
+    "snapshot": "SNAP-0054"
+  },
+  {
+    "name": "NSD_ACE_Agency_Niche_and_Service_Worksheet_V1.pdf",
+    "sha256": "1a8dd670b3f5326f9d66e6a4537e07c4fc4455f7062ceb086f641d75fa46e0b7",
+    "snapshot": "SNAP-0055"
+  },
+  {
+    "name": "NSD_ACE_Controlled_Pilot_Offer_Template_V1.docx",
+    "sha256": "f7a8b777f30de61f83beded6ba2283d57fd9bd142e37ed15e69c7aac08e2e7c4",
+    "snapshot": "SNAP-0056"
+  },
+  {
+    "name": "NSD_ACE_Controlled_Pilot_Offer_Template_V1.pdf",
+    "sha256": "d223044836460ce93d658563b0c0fb4a058040bc6f19789e365c29d414cdfcd4",
+    "snapshot": "SNAP-0057"
+  },
+  {
+    "name": "NSD_ACE_Productized_Service_Builder_V1.xlsx",
+    "sha256": "97aeea2eb48c5916e6c0329478defa3b6d6b693390c740b859e4bf6d62d954d8",
+    "snapshot": "SNAP-0058"
+  },
+  {
+    "name": "NSD_ACE_Workflow_ROI_Estimator_V1.xlsx",
+    "sha256": "7bb0395bcd3d4301c7993f8d7cc54523403cb42ca741affabda9471de8235eb5",
+    "snapshot": "SNAP-0059"
+  },
+  {
+    "name": "NSD_ACE_Ideal_Client_Profile_Worksheet_V1.docx",
+    "sha256": "91a49fceb013428f002556775ddac1f622f3b337a5f764c7564bbeb7361b0a36",
+    "snapshot": "SNAP-0096"
+  },
+  {
+    "name": "NSD_ACE_Ideal_Client_Profile_Worksheet_V1.pdf",
+    "sha256": "16836aad3a267e7ad1b74a9fa79aa53957ebdb40e0d7bd1759ab791e338a612f",
+    "snapshot": "SNAP-0097"
+  },
+  {
+    "name": "NSD_ACE_Prospect_and_Workflow_Qualification_Scorecard_V1.pdf",
+    "sha256": "916bca24ae481e919e3312e1458a15ce11139dbcfabe4f18cba0015b74cdcfcd",
+    "snapshot": "SNAP-0098"
+  },
+  {
+    "name": "NSD_ACE_Prospect_and_Workflow_Qualification_Scorecard_V1.xlsx",
+    "sha256": "60336ca8f33a4b6930c1e1178a4da79dec8aca6f302b76bac6c2382a14eca29d",
+    "snapshot": "SNAP-0099"
+  },
+  {
+    "name": "NSD_ACE_Access_and_Permission_Checklist_V1.docx",
+    "sha256": "e7a9acae1b2ac5ae0a0e2f27c332a3a5b42e5cb2fb0189e9b0b452d325855bf3",
+    "snapshot": "SNAP-0111"
+  },
+  {
+    "name": "NSD_ACE_Access_and_Permission_Checklist_V1.pdf",
+    "sha256": "10986753267a7f3c86a50371b4427bc274f032026c9867e92b78e2c0d1e328b7",
+    "snapshot": "SNAP-0112"
+  },
+  {
+    "name": "NSD_ACE_Onboarding_Status_and_Blocker_Tracker_V1.pdf",
+    "sha256": "786c6568c631680744832ae1bfd18067ba5a28a21b895773a7340e0c3ad47ffd",
+    "snapshot": "SNAP-0117"
+  },
+  {
+    "name": "NSD_ACE_Onboarding_Status_and_Blocker_Tracker_V1.xlsx",
+    "sha256": "928bc6ef5258de065af87f69d029bfc606235a3039f1615fba10fe7766e001ea",
+    "snapshot": "SNAP-0118"
+  },
+  {
+    "name": "NSD_ACE_One_Workflow_Implementation_Proposal_V1.docx",
+    "sha256": "276eb38f7ba591f641cb5c29059d90a5cc9ec09d7b76472f0cf3ab7f761c26c8",
+    "snapshot": "SNAP-0119"
+  },
+  {
+    "name": "NSD_ACE_One_Workflow_Implementation_Proposal_V1.pdf",
+    "sha256": "27a5a30e079cd46cbd09495690c8ef87f28595462c55b40ccc51adc895fca587",
+    "snapshot": "SNAP-0120"
+  },
+  {
+    "name": "NSD_ACE_Required_Asset_Collection_Register_V1.pdf",
+    "sha256": "5171d0009f953e97fce856d80302398779094bb47bc0ac565db4b3d40e63f72b",
+    "snapshot": "SNAP-0121"
+  },
+  {
+    "name": "NSD_ACE_Required_Asset_Collection_Register_V1.xlsx",
+    "sha256": "2be5e661556a9287f359f07afb7657b11ec5f17c5044e07b0b71044f308c3033",
+    "snapshot": "SNAP-0122"
+  },
+  {
+    "name": "NSD_ACE_Statement_of_Work_One_Controlled_Workflow_V1.docx",
+    "sha256": "ec16e5b5304f96927a359110f58f157453f78a32beeabc5053720de2d90ca558",
+    "snapshot": "SNAP-0123"
+  },
+  {
+    "name": "NSD_ACE_Statement_of_Work_One_Controlled_Workflow_V1.pdf",
+    "sha256": "3b397352e41b85a94175776f5ebcee138f08aaefff5db0199c7ae312bfdb96a7",
+    "snapshot": "SNAP-0124"
+  }
+]

@@ -8,6 +8,23 @@ RESOURCE_ROOT = Path(__file__).resolve().parent / "content"
 
 
 RESOURCE_CATALOG: dict[str, dict[str, Any]] = {
+    "starter-read-first": {
+        "product_key": "starter-toolkit",
+        "title": "Starter Toolkit: Start Here",
+        "description": "Package contents, opening instructions and suggested order.",
+        "filename": "starter-read-first.md",
+        "media_type": "text/markdown",
+    },
+    "starter-download-pack": {
+        "product_key": "starter-toolkit",
+        "title": "Starter Toolkit Download Pack",
+        "description": (
+            "37 source files in PDF, Word, Excel and HTML formats, plus a start "
+            "guide and contents list. Includes format variants; no recorded videos."
+        ),
+        "filename": "NeuralShield_Agency_Starter_Toolkit_V1.zip",
+        "media_type": "application/zip",
+    },
     "starter-client-intake": {
         "product_key": "starter-toolkit",
         "title": "Client Intake Checklist",
