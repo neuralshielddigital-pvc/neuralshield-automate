@@ -80,13 +80,32 @@ made by startup. Do not print `docker compose config` without `--quiet` or share
 
 ## Remaining configuration before arming
 
+### 18 September owner-operated update
+
+The owner fetched `ee530ba55e875b1e16d1244ac9bd91edbddba725` and successfully
+ran `Initialize-Local.ps1`. The owner reports saving the sandbox client token,
+a replacement API key named **Agency Local Sandbox Test 2**, and Hostinger SMTP
+configuration locally. Screenshots showed only Customers Read and Transactions
+Read selected for the test key. Revocation of the first unused test key was
+requested but has not been confirmed. Credential values have not been inspected
+or tested externally.
+
+After starting Docker Desktop and retrying the build/start, the owner's browser
+showed `{"environment":"sandbox","armed":false,"orders":0,"delivery":[]}` at
+`http://localhost:8097/health`. This confirms local harness startup; it does not
+prove API authentication, SMTP authentication or delivery.
+
+A separate webhook relay is now prepared; see
+[the relay runbook](agency-sandbox-webhook-relay.md). No tunnel is active.
+
 1. In **Paddle Sandbox > Developer tools > Authentication**, prepare a sandbox
    client-side token (`test_...`) and a separate sandbox API key. For this harness,
    API access is limited to reading transactions and customers. No create/write
    privileges are used by the backend. Enter values in `sandbox.env` locally.
 2. Arrange a **webhook-only** HTTPS forwarding target for the local
-   `POST /api/paddle/webhook` route. This forwarding target is not yet implemented
-   or approved. Never publish port 8097 or tunnel the whole member/API service.
+   `POST /api/paddle/webhook` route. The local relay is implemented and tested with
+   synthetic requests; public tunnel activation is not yet approved or performed.
+   Never publish port 8097 or tunnel the whole member/API service.
    Forward the original raw body and Paddle-Signature, rewriting Host to localhost.
 3. Add a separate sandbox notification destination subscribing to
    `transaction.completed`, using that approved forwarding URL. Preserve existing
