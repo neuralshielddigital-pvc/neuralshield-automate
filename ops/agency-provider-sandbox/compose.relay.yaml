@@ -8,7 +8,9 @@ services:
       dockerfile: relay/Dockerfile
     command: ["python", "-m", "uvicorn", "webhook_relay:create_app", "--factory", "--host", "0.0.0.0", "--port", "8098", "--workers", "1", "--no-access-log", "--no-proxy-headers", "--limit-concurrency", "16", "--timeout-keep-alive", "2"]
     ports: ["127.0.0.1:8098:8098"]
-    networks: [relay_backend]
+    # Docker Desktop needs a non-internal bridge for host port publishing.
+    # The published listener remains explicitly bound to Windows loopback.
+    networks: [relay_backend, relay_host]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     read_only: true
@@ -16,3 +18,5 @@ services:
 networks:
   relay_backend:
     internal: true
+  relay_host:
+    driver: bridge

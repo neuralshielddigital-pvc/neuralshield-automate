@@ -18,8 +18,11 @@ The one-order and exact-recipient restrictions remain in the sandbox harness.
 
 The relay image contains only its source and Python dependencies. It has no
 Paddle/SMTP credentials, database access or paid Starter package. Its Docker
-network is internal, and its sole published port binds to 127.0.0.1. The existing
-API additionally joins this internal network via a separate Compose override.
+backend network is internal, and its sole published port binds to 127.0.0.1.
+A separate ordinary bridge, `relay_host`, permits Docker Desktop host port
+publishing. Only the relay joins this additional bridge; the bridge permits
+outbound networking but the application forwards to its fixed backend only.
+The existing API additionally joins the internal network via a Compose override.
 No access logging, Docker socket, host-network mode or privileged container is used.
 
 ## Verification and limits
@@ -30,9 +33,30 @@ They check blocked paths/methods, query and encoded-path rejection, raw-body
 preservation, exact transport target/Host, header isolation, body bounds and
 sanitized failure handling. No external endpoint, email or payment was contacted.
 
-Relay image build, Compose merge/networking on the owner's Docker Desktop,
-live forwarding, authentic webhook receipt and external email remain unverified.
-The existing owner's health-page result applies to the base local harness only.
+The owner built the relay image and started both services on Docker Desktop.
+At commit `c4022d77c52ff0ab937bf3a42311fb1abea6e563`, relay logs showed a healthy
+Uvicorn listener on 0.0.0.0:8098, but `compose ps -a` showed only `8098/tcp`
+without a host mapping. All host probes, including literal 127.0.0.1, failed to
+connect. This was not a passing relay check. The earlier internal-only network
+configuration did not produce the required host mapping on this setup.
+
+The correction adds `relay_host` while preserving `relay_backend` as internal
+and the exact host binding `127.0.0.1:8098:8098`. It requires recreating only the
+relay container (no image rebuild, API recreation or database restart). Host
+reachability and the four runtime route checks must be repeated on the owner's
+PC after this correction. Public forwarding, authentic webhook receipt and
+external email remain unverified. Docker is unavailable in the assistant runtime.
+
+For an existing running setup, after fetching the corrected checkpoint:
+
+```powershell
+docker compose -f ops/agency-provider-sandbox/compose.yaml -f ops/agency-provider-sandbox/compose.relay.yaml config --quiet
+docker compose -f ops/agency-provider-sandbox/compose.yaml -f ops/agency-provider-sandbox/compose.relay.yaml up -d --no-deps --no-build --force-recreate webhook-relay
+docker compose -f ops/agency-provider-sandbox/compose.yaml -f ops/agency-provider-sandbox/compose.relay.yaml ps webhook-relay
+```
+
+Require `127.0.0.1:8098->8098/tcp` in the published ports and then run the checks
+below. Do not use `down` or reset the database to repair this network issue.
 
 ## Local preparation after fetching this checkpoint
 
