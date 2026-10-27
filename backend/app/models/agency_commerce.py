@@ -51,7 +51,7 @@ class AgencyCustomer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 
 class AgencyOrder(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "agency_orders"
+    __tablename__ = "agency_orders"\n    __table_args__ = (UniqueConstraint("payment_provider", "provider_order_id", name="uq_agency_orders_provider_identity"),)
 
     customer_id: Mapped[UUID] = mapped_column(
         PostgresUUID(as_uuid=True),
@@ -59,13 +59,13 @@ class AgencyOrder(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
-    paddle_transaction_id: Mapped[str] = mapped_column(
+    payment_provider: Mapped[str] = mapped_column(\n        String(32), nullable=False, default="paddle",\n    )\n    provider_order_id: Mapped[str] = mapped_column(\n        String(255), nullable=False,\n    )\n    provider_product_id: Mapped[str | None] = mapped_column(\n        String(255), nullable=True,\n    )\n    paddle_transaction_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=False,
         unique=True,
         index=True,
     )
-    paddle_price_id: Mapped[str] = mapped_column(
+    paddle_price_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=False,
         index=True,
