@@ -48,19 +48,16 @@ def test_agency_provider_migration_backfills_legacy_paddle_orders():
                     paddle_price_id="pri_synthetic",
                 )
             )
-            operations = Operations(MigrationContext.configure(connection))
-            with operations.context(operations):
+            context = MigrationContext.configure(connection)
+            with Operations.context(context):
                 module.upgrade()
             result = connection.execute(sa.text(
                 "SELECT payment_provider, provider_order_id, provider_product_id "
                 "FROM agency_orders WHERE id = 'legacy'"
             )).one()
             assert result == ("paddle", transaction_id, "pri_synthetic")
-            with operations.context(operations):
+            with Operations.context(context):
                 module.downgrade()
-            assert "payment_provider" not in sa.inspect(connection).get_columns(
-                "agency_orders"
-            )[0]["name"]
         columns = [c["name"] for c in sa.inspect(engine).get_columns("agency_orders")]
         assert "payment_provider" not in columns
         assert "paddle_transaction_id" in columns
