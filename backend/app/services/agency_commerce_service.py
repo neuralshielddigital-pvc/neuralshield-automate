@@ -155,6 +155,9 @@ class AgencyCommerceService:
 
         order = AgencyOrder(
             customer_id=customer.id,
+            payment_provider="paddle",
+            provider_order_id=transaction_id,
+            provider_product_id=price_id,
             paddle_transaction_id=transaction_id,
             paddle_price_id=price_id,
             product_key=catalog["product_key"],
