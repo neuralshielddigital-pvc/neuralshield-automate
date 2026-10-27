@@ -124,3 +124,27 @@ def test_amount_parser() -> None:
             "9700",
         )
     ) == Decimal("97.00")
+
+
+def test_paddle_order_populates_provider_neutral_identity() -> None:
+    from unittest.mock import MagicMock
+    from app.models.agency_commerce import AgencyOrder
+
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = None
+    created = []
+
+    def capture(row):
+        created.append(row)
+
+    db.add.side_effect = capture
+    service = AgencyCommerceService(db=db)
+    service.handle_completed_transaction(
+        payload("pri_01kzx9mrs5g2bxgjgqwfcb4med", "2700")
+    )
+    orders = [row for row in created if isinstance(row, AgencyOrder)]
+    assert len(orders) == 1
+    assert orders[0].payment_provider == "paddle"
+    assert orders[0].provider_order_id == "txn_test_agency_001"
+    assert orders[0].provider_product_id == "pri_01kzx9mrs5g2bxgjgqwfcb4med"
+    db.commit.assert_called_once()

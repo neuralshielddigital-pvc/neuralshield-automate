@@ -63,3 +63,38 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  agency-whop-postgres-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: agency_ci
+          POSTGRES_PASSWORD: synthetic_ci_only
+          POSTGRES_DB: agency_whop_ci
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U agency_ci -d agency_whop_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      AGENCY_WHOP_TEST_DATABASE_URL: postgresql+psycopg://agency_ci:synthetic_ci_only@127.0.0.1:55432/agency_whop_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Test Whop order persistence on disposable PostgreSQL
+        run: pytest -q tests/test_agency_whop_postgres_ci.py tests/test_agency_whop_postgres_migration_ci.py
