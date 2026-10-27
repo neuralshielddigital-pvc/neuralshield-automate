@@ -43,6 +43,14 @@ class AgencyWhopPersistence:
                 existing_order_product_key=existing.product_key if existing else None,
             )
             if decision.action == "duplicate":
+                # The same provider order must never silently change product or value.
+                if (
+                    existing.provider_product_id != purchase.provider_product_id
+                    or existing.amount != purchase.amount
+                    or existing.currency != purchase.currency
+                    or existing.status != "completed"
+                ):
+                    raise ValueError("Whop duplicate order facts conflict")
                 return {"handled": True, "duplicate": True, "order_id": str(existing.id)}
             if decision.action != "grant":
                 raise ValueError("Whop purchase identity conflict")
