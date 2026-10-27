@@ -51,6 +51,16 @@ class AgencyWhopPersistence:
                     or existing.status != "completed"
                 ):
                     raise ValueError("Whop duplicate order facts conflict")
+                existing_customer = (
+                    self.db.query(AgencyCustomer)
+                    .filter(AgencyCustomer.id == existing.customer_id)
+                    .first()
+                )
+                if (
+                    existing_customer is None
+                    or existing_customer.email != purchase.customer_email
+                ):
+                    raise ValueError("Whop duplicate order customer conflict")
                 return {"handled": True, "duplicate": True, "order_id": str(existing.id)}
             if decision.action != "grant":
                 raise ValueError("Whop purchase identity conflict")
