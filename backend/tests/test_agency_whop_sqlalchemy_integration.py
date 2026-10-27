@@ -40,3 +40,38 @@ def test_verified_whop_purchase_commits_once_and_duplicate_remains_single():
             assert session.scalar(select(func.count()).select_from(AgencyFulfilment)) == 1
     finally:
         engine.dispose()
+
+
+def test_conflicting_duplicate_rolls_back_without_changing_existing_entitlements():
+    from dataclasses import replace
+    import pytest
+
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    tables = [
+        AgencyCustomer.__table__, AgencyOrder.__table__,
+        AgencyEntitlement.__table__, AgencyFulfilment.__table__,
+    ]
+    Base.metadata.create_all(engine, tables=tables)
+    purchase = validate_verified_whop_purchase(
+        independently_verified=True,
+        payment_status="paid",
+        provider_order_id="sqlite_conflict_order",
+        provider_product_id="sqlite_product",
+        configured_product_map={"sqlite_product": "starter-toolkit"},
+        amount="27.00", currency="USD", customer_email="original@example.com",
+    )
+    try:
+        with Session(engine) as session:
+            first = AgencyWhopPersistence(session).record_verified_purchase(purchase)
+            assert first["duplicate"] is False
+            with pytest.raises(ValueError, match="customer conflict"):
+                AgencyWhopPersistence(session).record_verified_purchase(
+                    replace(purchase, customer_email="attacker@example.com")
+                )
+            assert session.scalar(select(func.count()).select_from(AgencyCustomer)) == 1
+            assert session.scalar(select(func.count()).select_from(AgencyOrder)) == 1
+            assert session.scalar(select(func.count()).select_from(AgencyEntitlement)) == 1
+            assert session.scalar(select(func.count()).select_from(AgencyFulfilment)) == 1
+            assert AgencyWhopPersistence(session).record_verified_purchase(purchase)["duplicate"]
+    finally:
+        engine.dispose()
