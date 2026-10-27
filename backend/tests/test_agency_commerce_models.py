@@ -29,7 +29,7 @@ def test_agency_order_transaction_is_idempotency_key() -> None:
     table = AgencyOrder.__table__
 
     assert table.c.paddle_transaction_id.unique is True
-    assert table.c.paddle_price_id.nullable is False
+    assert table.c.paddle_price_id.nullable is True
     assert table.c.product_key.nullable is False
 
 
