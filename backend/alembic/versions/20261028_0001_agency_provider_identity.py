@@ -22,6 +22,17 @@ def upgrade() -> None:
             provider_product_id = paddle_price_id
         WHERE paddle_transaction_id IS NOT NULL
     """)
+    # Stop before NOT NULL if any legacy record lacks a Paddle identity.
+    # No production rows are silently rewritten or discarded.
+    bind = op.get_bind()
+    unmatched = bind.execute(sa.text(
+        "SELECT COUNT(*) FROM agency_orders "
+        "WHERE payment_provider IS NULL OR provider_order_id IS NULL"
+    )).scalar_one()
+    if unmatched:
+        raise RuntimeError(
+            "Cannot migrate Agency orders with missing provider identity"
+        )
     op.alter_column("agency_orders", "payment_provider", nullable=False,
                     existing_type=sa.String(32))
     op.alter_column("agency_orders", "provider_order_id", nullable=False,
