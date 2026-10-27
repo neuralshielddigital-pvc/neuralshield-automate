@@ -44,3 +44,30 @@ def test_verified_contract_produces_whop_order_identity():
     )
     assert p.provider_order_id == "synthetic_order"
     assert p.provider == "whop"
+
+
+def test_duplicate_whop_order_rejects_conflicting_amount_without_grant():
+    from decimal import Decimal
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    import pytest
+
+    purchase = validate_verified_whop_purchase(
+        independently_verified=True, payment_status="paid",
+        provider_order_id="synthetic_order", provider_product_id="synthetic_product",
+        configured_product_map={"synthetic_product": "starter-toolkit"},
+        amount="27.00", currency="USD", customer_email="buyer@example.com",
+    )
+    old_order = SimpleNamespace(
+        id="old-id", payment_provider="whop",
+        provider_order_id="synthetic_order", provider_product_id="synthetic_product",
+        product_key="starter-toolkit", amount=Decimal("26.00"),
+        currency="USD", status="completed",
+    )
+    db = MagicMock()
+    db.query.return_value.filter.return_value.with_for_update.return_value.first.return_value = old_order
+    with pytest.raises(ValueError, match="facts conflict"):
+        AgencyWhopPersistence(db).record_verified_purchase(purchase)
+    db.commit.assert_not_called()
+    db.rollback.assert_called_once()
+    db.add.assert_not_called()
