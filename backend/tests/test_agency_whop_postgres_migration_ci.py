@@ -64,3 +64,48 @@ def test_agency_provider_migration_backfills_legacy_paddle_orders():
     finally:
         metadata.drop_all(engine, checkfirst=True)
         engine.dispose()
+
+
+def test_agency_provider_migration_refuses_downgrade_with_whop_orders():
+    url = os.environ.get("AGENCY_WHOP_TEST_DATABASE_URL", "")
+    if not url:
+        pytest.skip("Dedicated disposable PostgreSQL required")
+    if not url.startswith("postgresql") or "127.0.0.1:55432/" not in url:
+        pytest.fail("Migration test restricted to CI loopback PostgreSQL port 55432")
+
+    migration_path = (
+        Path(__file__).resolve().parents[1] / "alembic" / "versions"
+        / "20261028_0001_agency_provider_identity.py"
+    )
+    spec = importlib.util.spec_from_file_location("agency_provider_migration_guard", migration_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    engine = sa.create_engine(url)
+    metadata = sa.MetaData()
+    table = sa.Table(
+        "agency_orders", metadata,
+        sa.Column("id", sa.String(50), primary_key=True),
+        sa.Column("paddle_transaction_id", sa.String(255), nullable=False, unique=True),
+        sa.Column("paddle_price_id", sa.String(255), nullable=False),
+    )
+    try:
+        metadata.create_all(engine)
+        with engine.begin() as connection:
+            context = MigrationContext.configure(connection)
+            with Operations.context(context):
+                module.upgrade()
+            connection.execute(sa.text(
+                "INSERT INTO agency_orders "
+                "(id, payment_provider, provider_order_id, provider_product_id) "
+                "VALUES ('whop_ci', 'whop', 'order_synthetic', 'product_synthetic')"
+            ))
+            with pytest.raises(RuntimeError, match="non-Paddle"):
+                with Operations.context(context):
+                    module.downgrade()
+            assert "payment_provider" in {
+                c["name"] for c in sa.inspect(connection).get_columns("agency_orders")
+            }
+    finally:
+        metadata.drop_all(engine, checkfirst=True)
+        engine.dispose()
