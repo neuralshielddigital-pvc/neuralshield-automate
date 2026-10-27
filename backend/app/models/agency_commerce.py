@@ -71,13 +71,13 @@ class AgencyOrder(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     paddle_transaction_id: Mapped[str | None] = mapped_column(
         String(255),
-        nullable=False,
+        nullable=True,
         unique=True,
         index=True,
     )
     paddle_price_id: Mapped[str | None] = mapped_column(
         String(255),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     product_key: Mapped[str] = mapped_column(
