@@ -47,6 +47,15 @@ class Settings(BaseSettings):
 
 
 
+    # Agency-only Whop migration. Disabled until provider contracts and keys verified.
+    AGENCY_WHOP_ENABLED: bool = False
+    AGENCY_WHOP_API_KEY: str = ""
+    AGENCY_WHOP_WEBHOOK_SECRET: str = ""
+    AGENCY_WHOP_PRODUCT_STARTER_ID: str = ""
+    AGENCY_WHOP_PRODUCT_PRO_ID: str = ""
+    AGENCY_WHOP_PRODUCT_ADVANCED_ID: str = ""
+    AGENCY_WHOP_PRODUCT_LICENSE_ID: str = ""
+
     PADDLE_API_KEY: str = ""
     PADDLE_WEBHOOK_SECRET: str = ""
     PADDLE_ENVIRONMENT: str = "production"
