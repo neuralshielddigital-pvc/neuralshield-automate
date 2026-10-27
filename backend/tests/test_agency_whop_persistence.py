@@ -71,3 +71,34 @@ def test_duplicate_whop_order_rejects_conflicting_amount_without_grant():
     db.commit.assert_not_called()
     db.rollback.assert_called_once()
     db.add.assert_not_called()
+
+
+def test_duplicate_whop_order_rejects_different_customer_email():
+    from decimal import Decimal
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    import pytest
+
+    purchase = validate_verified_whop_purchase(
+        independently_verified=True, payment_status="paid",
+        provider_order_id="synthetic_order", provider_product_id="synthetic_product",
+        configured_product_map={"synthetic_product": "starter-toolkit"},
+        amount="27.00", currency="USD", customer_email="new@example.com",
+    )
+    existing = SimpleNamespace(
+        id="order-1", customer_id="customer-1", payment_provider="whop",
+        provider_order_id="synthetic_order", provider_product_id="synthetic_product",
+        product_key="starter-toolkit", amount=Decimal("27.00"),
+        currency="USD", status="completed",
+    )
+    db = MagicMock()
+    order_query = MagicMock()
+    order_query.filter.return_value.with_for_update.return_value.first.return_value = existing
+    customer_query = MagicMock()
+    customer_query.filter.return_value.first.return_value = SimpleNamespace(email="original@example.com")
+    db.query.side_effect = [order_query, customer_query]
+    with pytest.raises(ValueError, match="customer conflict"):
+        AgencyWhopPersistence(db).record_verified_purchase(purchase)
+    db.commit.assert_not_called()
+    db.rollback.assert_called_once()
+    db.add.assert_not_called()
