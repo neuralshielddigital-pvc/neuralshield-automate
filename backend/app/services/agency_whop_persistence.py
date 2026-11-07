@@ -21,7 +21,7 @@ class AgencyWhopPersistence:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def record_verified_purchase(self, purchase: VerifiedAgencyPurchase) -> dict:
+    def record_verified_purchase(self, purchase: VerifiedAgencyPurchase, *, revoked: bool = False) -> dict:
         # Verify against explicit trusted contract; never blindly cast webhook data.
         if not isinstance(purchase, VerifiedAgencyPurchase) or purchase.provider != "whop":
             raise ValueError("Verified Whop purchase required")
@@ -48,7 +48,7 @@ class AgencyWhopPersistence:
                     existing.provider_product_id != purchase.provider_product_id
                     or existing.amount != purchase.amount
                     or existing.currency != purchase.currency
-                    or existing.status != "completed"
+                    or existing.status not in ("completed", "revoked")
                 ):
                     raise ValueError("Whop duplicate order facts conflict")
                 existing_customer = (
@@ -61,6 +61,15 @@ class AgencyWhopPersistence:
                     or existing_customer.email != purchase.customer_email
                 ):
                     raise ValueError("Whop duplicate order customer conflict")
+                if revoked:
+                    existing.status = "revoked"
+                    for entitlement in self.db.query(AgencyEntitlement).filter(AgencyEntitlement.order_id == existing.id).all():
+                        entitlement.status = "revoked"
+                        entitlement.revoked_at = datetime.now(timezone.utc)
+                        for delivery in self.db.query(AgencyFulfilment).filter(AgencyFulfilment.entitlement_id == entitlement.id).all():
+                            delivery.status = "revoked"
+                    self.db.commit()
+                # A stale payment event must never reactivate a revoked purchase.
                 return {"handled": True, "duplicate": True, "order_id": str(existing.id)}
             if decision.action != "grant":
                 raise ValueError("Whop purchase identity conflict")
@@ -85,7 +94,7 @@ class AgencyWhopPersistence:
                 product_key=purchase.product_key,
                 amount=purchase.amount,
                 currency=purchase.currency,
-                status="completed",
+                status="revoked" if revoked else "completed",
                 completed_at=datetime.now(timezone.utc),
             )
             self.db.add(order)
@@ -93,13 +102,14 @@ class AgencyWhopPersistence:
             entitlement = AgencyEntitlement(
                 customer_id=customer.id, order_id=order.id,
                 product_key=purchase.product_key,
-                status="active", granted_at=datetime.now(timezone.utc),
+                status="revoked" if revoked else "active", granted_at=datetime.now(timezone.utc),
+                revoked_at=datetime.now(timezone.utc) if revoked else None,
             )
             self.db.add(entitlement)
             self.db.flush()
             self.db.add(AgencyFulfilment(
                 entitlement_id=entitlement.id,
-                status="pending",
+                status="revoked" if revoked else "pending",
                 delivery_method="member_portal",
                 destination=customer.email,
             ))
