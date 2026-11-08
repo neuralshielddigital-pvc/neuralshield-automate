@@ -25,7 +25,7 @@ AGENCY_WHOP_PRODUCT_ADVANCED_ID=prod_fOpMVDOWI6zz8
 AGENCY_WHOP_PRODUCT_LICENSE_ID=prod_RwYu39afBgUKe
 ```
 
-Also provision AGENCY_WHOP_API_KEY (payment:basic:read and plan:basic:read only) and AGENCY_WHOP_WEBHOOK_SECRET. No payout, refund-write or transfer permission is needed.
+Also provision AGENCY_WHOP_API_KEY (payment:basic:read, plan:basic:read and member:email:read only) and AGENCY_WHOP_WEBHOOK_SECRET. No payout, refund-write or transfer permission is needed.
 
 Create webhook version v1 with api_version_date 2026-11-07, URL https://api.neuralshielddigital.com/api/webhooks/agency/whop and events payment.succeeded, refund.created, refund.updated. Preserve the literal ws_ signing secret. Do not register an unimplemented endpoint in production.
 
@@ -47,3 +47,7 @@ Credentials, webhook provisioning, server deployment access, migration execution
 https://docs.whop.com/developer/guides/webhooks
 https://docs.whop.com/api-reference/payments/retrieve-payment
 https://api.whop.com/api/v1/openapi.json
+
+## Server preflight on 2026-11-08
+
+Confirmed Sydney neuralshield-server serves app/API and Agency. Live backend is not a Git checkout; do not use it as a development directory. Live migration head is 20260831_0003. Approved commit was cloned separately under /home/ubuntu/agency-whop-staging/. Separate Python 3.10 virtual environment created there; production dependencies were not changed. Initial isolated suite exposed three pre-existing tests importing datetime.UTC (3.11+); they now use timezone.utc, and CI covers Python 3.10/3.12. Runtime SMTP host/from settings are present, Whop credentials absent. Final migration and shared-backend rollback plan still require verification; no production code/schema or checkout switched.

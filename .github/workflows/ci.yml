@@ -11,6 +11,9 @@ permissions:
 
 jobs:
   backend-tests:
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
 
