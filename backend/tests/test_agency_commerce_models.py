@@ -29,7 +29,7 @@ def test_agency_order_transaction_is_idempotency_key() -> None:
     table = AgencyOrder.__table__
 
     assert table.c.paddle_transaction_id.unique is True
-    assert table.c.paddle_price_id.nullable is False
+    assert table.c.paddle_price_id.nullable is True
     assert table.c.product_key.nullable is False
 
 
@@ -46,3 +46,15 @@ def test_agency_fulfilment_is_one_per_entitlement() -> None:
 
     assert table.c.entitlement_id.unique is True
     assert table.c.status.nullable is False
+
+
+def test_agency_orders_support_provider_scoped_identity():
+    from sqlalchemy import UniqueConstraint
+    table = AgencyOrder.__table__
+    assert table.c.payment_provider.nullable is False
+    assert table.c.provider_order_id.nullable is False
+    assert table.c.paddle_transaction_id.nullable is True
+    assert table.c.paddle_price_id.nullable is True
+    assert any(isinstance(c, UniqueConstraint) and
+               set(c.columns.keys()) == {"payment_provider", "provider_order_id"}
+               for c in table.constraints)
