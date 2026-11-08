@@ -2,6 +2,22 @@
 
 Target: agency.neuralshielddigital.com only. Existing Workflow Automation billing and historical Paddle orders remain separate.
 
+## Current production status — 2026-11-08
+
+This status supersedes all historical checkpoints below. The browser credit gate was resolved by the user and normal browser actions resumed.
+
+- Agency Whop checkout is LIVE. Backend runtime artifact: 95473db45cd9609697c6471493cd4d1e8bdf6930. Frontend runtime artifact: aa91a523b70de68635542a429e415b5920b9a208. Both PRs remain unmerged; do not infer deployed artifacts from default-branch HEAD.
+- Sydney backend service is active, migration 20261028_0001, AGENCY_WHOP_ENABLED=true. Latest observed Agency order count before frontend activation was zero. API health/database, Agency, app and company HTTPS endpoints returned 200; unauthenticated member resources returned 401; unsigned webhook returned 400.
+- Whop webhook hook_aBUrUkwdF7CjU is now Active, subscribed only to payment.succeeded, refund.created and refund.updated. An actual Whop-signed synthetic product.updated test reached production and returned HTTP 200, body {"handled":false}, success true. This non-grant event proves signing/transport only, not paid fulfilment.
+- All four direct variant checkout forms were opened and verified as one-time purchases. USD base prices: Starter 27 (plan_w0lNlEQXDojTp), Pro 67 (plan_7B0NqlqldMhev), Advanced 97 (plan_XaO0fBulg3OaA), Commercial License 197 (plan_hPkvdowLx5q8M). Products remain hidden on the store; direct checkout links work. Buyer currency conversion and tax can change the displayed total.
+- Frontend config uses https://whop.com/checkout/<plan_id>. Only index.html, checkout.js and checkout-config.js were atomically deployed after live baseline comparison, full backup, backend checks and exact artifact verification. Checkout asset URLs carry v=agency-whop-v1-20261108 to invalidate cached Paddle scripts. No frontend service restart was needed.
+- Guarded frontend runner reported FRONTEND_CUTOVER_VERIFIED aa91a523b70de68635542a429e415b5920b9a208 after HTTPS byte hashes matched all three files and protected resources remained 401. The live website Starter button was then clicked and reached the correct Whop Agency Starter Toolkit payment form. No Pay button was clicked and no payment details were entered.
+- Frontend CI https://github.com/neuralshielddigital-pvc/neuralshield-agency-client-engine/actions/runs/42504364188 succeeded for aa91a523b70de68635542a429e415b5920b9a208. Local site/runtime/session checks passed. Backend CI evidence remains run 42460004275 (119 passed, 3 skipped locally; Python 3.10/3.12 and PostgreSQL CI checks passed).
+- Protected original backup remains /home/ubuntu/.local/state/agency-whop-backups/20261108T135718Z. Frontend deployment marker frontend-applied.json records the release. Never repeat the one-time migration/apply action.
+- Frontend archive SHA-256: a8dfebdbad1af1c9635824f90e61e1d9c6306da8682afff4b7086074fce29500. Frontend runner SHA-256: 86b4f7e0a529932840b9a07cb0f6370a51bb1b83c24ba5f8d67a032f844a86be. Both are in the existing isolated staging directory.
+
+Remaining acceptance: an authorized buyer must execute the payment; then verify the resulting provider-backed order, checkout-email member access link/SMTP delivery, paid resource download, denial of other tiers and refund revocation. No real charge/refund or buyer email delivery was performed. Do not report full end-to-end commercial acceptance until that evidence exists. Do not duplicate credentials, webhook, migration or deployment on an hourly run. Preserve all purchase history and other SaaS services.
+
 ## Implemented
 
 - POST /api/webhooks/agency/whop verifies raw-body HMAC and a five-minute replay window before processing.
