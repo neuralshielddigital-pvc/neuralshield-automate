@@ -71,3 +71,30 @@ After installing the exact reviewed artifact, configure the protected environmen
 Rollback before any Whop orders: restore protected affected-file backup and downgrade only after confirming no non-Paddle orders. After a Whop order exists, never downgrade/drop provider columns or restore the incompatible old writer; disable Whop/new checkout, retain the compatible schema/writer, and preserve all purchase history for recovery. Frontend rollback can restore its own backup without deleting billing records.
 
 Production deployment, migration, shared service restart, webhook registration and checkout switching have not been approved in this credential-provisioning step and were not executed. A real purchase/refund must be performed by the user when needed for final acceptance. Hidden products stay hidden until acceptance.
+
+
+## Latest approved deployment checkpoint — 2026-11-08 14:00 UTC
+
+This section supersedes the earlier preflight and not-executed statements above. The user explicitly approved backup, Agency migration, coordinated shared-backend restart, webhook setup and checkout switching only after verification. This approval does not authorize the assistant to perform a real charge/refund.
+
+Observed completed work:
+
+- Created Whop webhook hook_aBUrUkwdF7CjU, named Agency Whop Billing, for https://api.neuralshielddigital.com/api/webhooks/agency/whop; version v1/date 2026-11-07; exactly payment.succeeded, refund.created and refund.updated. Its last observed state is Disabled (paused).
+- Stored its signing secret in the existing protected server configuration, without recording secret values here. The API key remains restricted to read payments/plans/member emails and server IP 54.206.33.106/32.
+- A first pg_dump attempt failed because the CLI was not receiving the existing RDS TLS root certificate parameter. The second runner preserved sslrootcert/sslcert/sslkey parameters and verification; no TLS checks were disabled.
+- Validated PostgreSQL 17 full-database custom archive with pg_restore --list. Backup directory: /home/ubuntu/.local/state/agency-whop-backups/20261108T135718Z; database.dump size 1104703 bytes at creation. The protected directory also contains affected-original-file backups, Agency frontend archive, original Agency environment and manifest. Files mode 0600/directories 0700.
+- Installed exactly the 16 scoped backend/migration files from commit 95473db45cd9609697c6471493cd4d1e8bdf6930 after matching the live source to base 3f0646920eea3482a7206a1efddbb656c5a622d1. Applied migration 20261028_0001 and the compatible legacy Paddle writer together while only neuralshield-backend.service was stopped.
+- Created the dedicated systemd drop-in /etc/systemd/system/neuralshield-backend.service.d/agency-whop.conf referencing the protected Agency environment file. Set AGENCY_WHOP_ENABLED=true and restarted that service. The deployment runner reported BACKEND_INSTALLED after service active, local /api/health HTTP 200 with database ok, unsigned webhook HTTP 400, and unauthenticated member resources HTTP 401.
+- Deployment runner resides in the separate staging checkout as agency_release_v2.py; SHA-256 91afcd6764d8fb9605e9a06d17490f1bc99bf2cc25d27072dc6c1194a2dbf681. Staging directory remains /home/ubuntu/agency-whop-staging/6b7aa02870930e64f9ae7afaa78b2e054040b737; its source HEAD is 95473db. Do not rerun its one-time apply action on the now-migrated server.
+
+Verified CI evidence (read the run directly, not only PR-filtered lists): https://github.com/neuralshielddigital-pvc/neuralshield-automate/actions/runs/42460004275 completed successfully for exact commit 95473db45cd9609697c6471493cd4d1e8bdf6930. Staging suite was 119 passed, 3 skipped; CI includes Python 3.10/3.12 and PostgreSQL checks. An empty filtered connector response must not erase this direct-run evidence.
+
+Interruption and remaining work:
+
+The subsequent browser call was rejected by automatic approval review because of an account usage limit while opening the Whop hosted checkout. It was a review/usage failure, not a determination that the action was unsafe. Do not bypass the blocked action through another browser, raw CDP, terminal network execution or another transport. User must resolve the browser usage/credit gate before those browser actions resume.
+
+The same tool call had attempted to submit an external signed no-grant preflight and app/API/site health command through the existing SSH terminal before the Whop navigation rejection. Its output has not been observed, so do not claim those external checks passed; inspect the terminal state after access is restored.
+
+Website checkout has NOT been switched. Whop webhook last observed paused. No real purchase/refund, buyer SMTP delivery, paid member download or refund-revocation acceptance test was completed. Hidden products remain hidden. Frontend release candidate is commit 33b4082deda5921f1bae50b0b30076886e8add68 in PR #10; its index.html, checkout.js and checkout-config.js were independently compared with the local deployment bundle and matched. The bundle was prepared locally but not transferred/deployed.
+
+Resume by reading current server migration/service state and Whop webhook state before making any changes; preserve the existing full backup and all purchase history. Complete provider delivery/hosted checkout verification, then enable the approved webhook and switch only the exact Agency frontend files after gates pass. Do not repeat backup/migration/key creation or claim the launch is complete. Real financial acceptance actions require user handoff.
