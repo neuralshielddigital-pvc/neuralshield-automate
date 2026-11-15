@@ -49,6 +49,8 @@ class Settings(BaseSettings):
 
     # Agency-only Whop migration. Disabled until provider contracts and keys verified.
     AGENCY_WHOP_ENABLED: bool = False
+    # Separate recurring SaaS access gate; disabled until production checkout lifecycle proven.
+    AGENCY_SAAS_WHOP_LIMITS_ENABLED: bool = False
     AGENCY_WHOP_ACCOUNT_ID: str = ""
     AGENCY_WHOP_API_KEY: str = ""
     AGENCY_WHOP_WEBHOOK_SECRET: str = ""
