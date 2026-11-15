@@ -101,4 +101,4 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements-dev.txt
       - name: Test Whop order persistence on disposable PostgreSQL
-        run: pytest -q tests/test_agency_whop_postgres_ci.py tests/test_agency_whop_postgres_migration_ci.py
+        run: pytest -q tests/test_agency_whop_postgres_ci.py tests/test_agency_whop_postgres_migration_ci.py tests/test_agency_saas_whop_postgres_migration_ci.py
