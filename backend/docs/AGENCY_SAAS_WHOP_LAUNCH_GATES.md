@@ -1,6 +1,6 @@
 # Whop recurring Workflow Automation SaaS — production release gates
 
-**Date:** 2026-11-16. **Status: NOT LIVE / NOT ACCEPTED.**
+**Date:** 2026-11-16. **Status: NOT LIVE / NOT ACCEPTED. Webhook event selection verified.**
 This document covers the **monthly Workflow Automation SaaS** only.
 It is NOT the one-time Agency Client Engine Whop product flow (which has
 separate product IDs, order fulfilment and historical deployment).
@@ -32,15 +32,20 @@ or redirect it without verifying existing dependencies.
    official versioned contract. The existing one-time `WhopProvider.purchase`
    explicitly rejects recurring purchases; never repurpose it as a SaaS grant.
    A synthetic provider implementation does not establish this contract.
-2. **Whop event delivery:** existing active signed webhook:
-   `https://api.neuralshielddigital.com/api/webhooks/agency/whop`.
-   Its UI last showed `payment.succeeded`, `refund.created`,
-   `refund.updated`, `membership.updated` plus unrelated events;
-   `membership.activated`, `membership.deactivated`,
-   `membership.cancel_at_period_end_changed`, `payment.failed`
-   could not be verified enabled, despite earlier "Save" confirmations.
-   Correct and reopen the editor to verify all required events.
-   A safe synthetic `product.updated` reached the endpoint with HTTP 200
+2. **Whop event delivery: event selection DONE; signed SaaS delivery pending.**
+   Existing active webhook `https://api.neuralshielddigital.com/api/webhooks/agency/whop`
+   remains unchanged. On 2026-11-16 the signed-in Whop dashboard was edited,
+   saved (success confirmation) and reopened: all **10** events persisted,
+   including the required `membership.activated`, `membership.deactivated`,
+   `membership.cancel_at_period_end_changed`, `membership.updated`,
+   `payment.succeeded`, `payment.failed`, `refund.created`, `refund.updated`
+   plus preexisting unrelated `ad.created`, `card_application.denied`.
+   No webhook secret, endpoint URL or preexisting events were changed.
+   Operator evidence: https://agent.tinyfish.ai/runs/5bd4f18e-7c79-4f06-ae25-b845a8c96c0b .
+   **Still blocked:** real signed membership/payment delivery into an authenticated
+   provider-backed **SaaS** handler and verified tenant entitlements. The present
+   production handler is a one-time Agency handler; event subscriptions alone
+   cannot grant paid SaaS access. A synthetic `product.updated` returned HTTP 200
    and `{"handled":false}`; that proves transport only.
 3. **Authenticated buyer binding:** implement and validate an actual
    provider-authorized account-ownership flow tied to the logged-in SaaS
