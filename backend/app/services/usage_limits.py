@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.billing import Plan, Subscription
+from app.models.whop_saas_subscription import WhopSaasSubscriptionBinding
 from app.models.enums import SubscriptionStatus
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowRun
@@ -46,7 +47,50 @@ def month_start_utc() -> datetime:
     return datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
 
+def get_verified_whop_tier(db: Session, user: User) -> str | None:
+    """Opt-in Whop SaaS entitlement lookup, isolated from Paddle.
+
+    Returns None when the feature is disabled or a Whop subscription has
+    not been bound to this user and tenant. Revoked/past-due Whop rows never
+    provide paid limits. Authentication and authoritative provider lifecycle
+    persistence must be configured before this flag may be enabled.
+    """
+    if not getattr(settings, "AGENCY_SAAS_WHOP_LIMITS_ENABLED", False):
+        return None
+    if getattr(user, "tenant_id", None) is None:
+        return None
+    rows = (
+        db.query(WhopSaasSubscriptionBinding)
+        .filter(
+            WhopSaasSubscriptionBinding.user_id == user.id,
+            WhopSaasSubscriptionBinding.tenant_id == user.tenant_id,
+        )
+        .all()
+    )
+    active = [
+        row for row in rows
+        if row.access_enabled is True
+        and row.access_state == "active"
+        and row.provider_observed_at is not None
+        and row.tier in {"starter", "pro", "business"}
+    ]
+    # Multiple active Whop subscriptions for one user require a manual
+    # resolution, not implicit highest-tier privilege escalation.
+    if len(active) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Multiple active SaaS subscriptions require support review.",
+        )
+    if not active:
+        return None
+    return "enterprise" if active[0].tier == "business" else active[0].tier
+
+
 def get_active_plan_name(db: Session, user: User) -> str:
+    whop_tier = get_verified_whop_tier(db, user)
+    if whop_tier is not None:
+        return whop_tier
+
     query = db.query(Subscription).filter(
         Subscription.user_id == user.id,
         Subscription.status == SubscriptionStatus.ACTIVE,
