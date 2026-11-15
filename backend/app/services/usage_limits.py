@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -15,6 +15,25 @@ from app.models.workflow import Workflow, WorkflowRun
 
 
 UNLIMITED = -1
+# Expiring provider snapshots prevent a missed cancellation webhook from
+# granting paid limits indefinitely. A trusted reconciliation worker MUST
+# refresh provider facts regularly before this feature is activated.
+WHOP_SAAS_SNAPSHOT_TTL = timedelta(hours=24)
+
+
+def whop_snapshot_is_fresh(observed_at: datetime | None, *, now: datetime | None = None) -> bool:
+    if observed_at is None or not isinstance(observed_at, datetime):
+        return False
+    # Some drivers (including SQLite tests) return naive UTC timestamps.
+    # The backend writes timezone-aware UTC; naive values are interpreted UTC.
+    observed = observed_at.replace(tzinfo=timezone.utc) if observed_at.tzinfo is None else observed_at.astimezone(timezone.utc)
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("Current time must be timezone aware")
+    elapsed = current.astimezone(timezone.utc) - observed
+    return timedelta(0) <= elapsed <= WHOP_SAAS_SNAPSHOT_TTL
+
+
 
 PLAN_LIMITS: dict[str, dict[str, int]] = {
     "starter": {
@@ -72,7 +91,7 @@ def get_verified_whop_tier(db: Session, user: User) -> str | None:
         row for row in rows
         if row.access_enabled is True
         and row.access_state == "active"
-        and row.provider_observed_at is not None
+        and whop_snapshot_is_fresh(row.provider_observed_at)
         and row.tier in {"starter", "pro", "business"}
     ]
     # Multiple active Whop subscriptions for one user require a manual
