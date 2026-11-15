@@ -36,6 +36,31 @@ class SQLAlchemyWhopSaasBindingRepository:
             statement = statement.with_for_update()
         return self.db.scalar(statement)
 
+    def list_due_subscription_ids(self, *, before: datetime, limit: int) -> list[str]:
+        """Select only pre-existing identities due for provider reconciliation.
+
+        Stable ordering and bounded result size prevent an unbounded sweep.
+        No external requests or grants happen in this method.
+        """
+        from sqlalchemy import or_
+        if limit < 1 or limit > 100:
+            raise ValueError("Reconciliation candidate limit must be 1..100")
+        if before.tzinfo is None or before.utcoffset() is None:
+            raise ValueError("Cutoff must have a timezone")
+        statement = (
+            select(WhopSaasSubscriptionBinding.provider_subscription_id)
+            .where(or_(
+                WhopSaasSubscriptionBinding.provider_observed_at.is_(None),
+                WhopSaasSubscriptionBinding.provider_observed_at <= aware(before),
+            ))
+            .order_by(
+                WhopSaasSubscriptionBinding.provider_observed_at.asc().nullsfirst(),
+                WhopSaasSubscriptionBinding.provider_subscription_id.asc(),
+            )
+            .limit(limit)
+        )
+        return list(self.db.scalars(statement).all())
+
     def get_binding(self, subscription_id: str) -> AccountBinding | None:
         row = self._row(subscription_id)
         if row is None:
