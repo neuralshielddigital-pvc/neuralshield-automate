@@ -1,0 +1,101 @@
+"""Bounded SaaS subscription reconciliation using authoritative Whop snapshots.
+
+This module is NOT a scheduled job. The provider interface MUST be backed by
+a separately verified authenticated Whop subscription API client, and startup
+must require configured merchant/plan allowlists. Never refresh from webhook
+payloads or buyer-provided IDs.
+
+Errors are reported per subscription; a failed lookup does not extend stale
+paid access (the existing 24-hour usage-limit TTL applies independently).
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Mapping, Protocol, Sequence
+
+from app.services.agency_saas_whop_guardrails import (
+    RecurringPlan, validate_recurring_snapshot,
+)
+from app.services.agency_saas_whop_lifecycle import (
+    AccountBinding, BoundSubscriptionRepository, WhopSubscriptionProvider,
+)
+
+
+class ReconciliationCandidates(Protocol):
+    def list_due_subscription_ids(
+        self, *, before: datetime, limit: int
+    ) -> Sequence[str]: ...
+
+
+@dataclass(frozen=True)
+class ReconciliationReport:
+    examined: int
+    updated: int
+    unchanged: int
+    failed: int
+    failed_subscription_ids: tuple[str, ...]
+
+
+def reconcile_due_whop_saas_subscriptions(
+    *,
+    provider: WhopSubscriptionProvider,
+    repository: BoundSubscriptionRepository,
+    candidates: ReconciliationCandidates,
+    expected_merchant_id: str,
+    allowed_plans: Mapping[str, RecurringPlan],
+    due_before: datetime,
+    limit: int = 100,
+) -> ReconciliationReport:
+    """Refresh an explicitly bounded set of *already bound* subscriptions.
+
+    Returns failed identities to enable structured alerting and retry.
+    No webhook event is assumed and no binding is created.
+    """
+    if due_before.tzinfo is None or due_before.utcoffset() is None:
+        raise ValueError("Reconciliation cutoff must be timezone aware")
+    if limit < 1 or limit > 100:
+        raise ValueError("Reconciliation limit must be between 1 and 100")
+    if not expected_merchant_id.startswith("biz_") or not allowed_plans:
+        raise ValueError("Whop SaaS provider configuration is not ready")
+    ids = list(candidates.list_due_subscription_ids(before=due_before, limit=limit))
+    if len(ids) > limit or len(set(ids)) != len(ids) or any(
+        not isinstance(sid, str) or not sid.strip() for sid in ids
+    ):
+        raise ValueError("Invalid or unbounded reconciliation candidates")
+    updated = unchanged = 0
+    failures: list[str] = []
+    for subscription_id in ids:
+        try:
+            binding = repository.get_binding(subscription_id)
+            if (
+                binding is None
+                or binding.subscription_id != subscription_id
+                or not binding.tenant_id.strip()
+                or not binding.user_id.strip()
+                or not binding.provider_customer_id.strip()
+            ):
+                raise ValueError("Missing authorized SaaS subscription binding")
+            snapshot = provider.retrieve_verified_subscription(subscription_id)
+            if snapshot.subscription_id != subscription_id:
+                raise ValueError("Provider subscription identity mismatch")
+            decision = validate_recurring_snapshot(
+                snapshot=snapshot,
+                independently_verified=True,
+                expected_merchant_id=expected_merchant_id,
+                allowed_plans=allowed_plans,
+                bound_customer_id=binding.provider_customer_id,
+                previous=repository.get_decision(subscription_id),
+            )
+            if repository.apply_if_current(binding, decision):
+                updated += 1
+            else:
+                unchanged += 1
+        except Exception:
+            # No provider credentials or buyer information in the report.
+            # An external scheduler must alert and retry failed identities.
+            failures.append(subscription_id)
+    return ReconciliationReport(
+        examined=len(ids), updated=updated, unchanged=unchanged,
+        failed=len(failures), failed_subscription_ids=tuple(failures),
+    )
