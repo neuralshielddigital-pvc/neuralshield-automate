@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     AGENCY_WHOP_ENABLED: bool = False
     # Separate recurring SaaS access gate; disabled until production checkout lifecycle proven.
     AGENCY_SAAS_WHOP_LIMITS_ENABLED: bool = False
+    # Separate monthly SaaS contracts; never reuse one-time Agency product settings.
+    AGENCY_SAAS_WHOP_ENABLED: bool = False
+    AGENCY_SAAS_WHOP_STARTER_PRODUCT_ID: str = ""
+    AGENCY_SAAS_WHOP_STARTER_PLAN_ID: str = ""
+    AGENCY_SAAS_WHOP_PRO_PRODUCT_ID: str = ""
+    AGENCY_SAAS_WHOP_PRO_PLAN_ID: str = ""
+    AGENCY_SAAS_WHOP_BUSINESS_PRODUCT_ID: str = ""
+    AGENCY_SAAS_WHOP_BUSINESS_PLAN_ID: str = ""
     AGENCY_WHOP_ACCOUNT_ID: str = ""
     AGENCY_WHOP_API_KEY: str = ""
     AGENCY_WHOP_WEBHOOK_SECRET: str = ""
