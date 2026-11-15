@@ -61,7 +61,7 @@ class FakeRepo:
         return True
 
 
-def event(event_type="membership.went_valid", subscription_id="sub_test"):
+def event(event_type="membership.activated", subscription_id="sub_test"):
     return AuthenticatedWebhookReference("evt_test", event_type, subscription_id)
 
 
@@ -100,7 +100,7 @@ def test_cancellation_revokes_bound_access():
     provider = FakeProvider(snapshot())
     run(repo=repo, provider=provider)
     provider.current = snapshot("canceled", observed_at=NOW + timedelta(minutes=5))
-    result = run(repo=repo, provider=provider, evt=event("membership.went_invalid"))
+    result = run(repo=repo, provider=provider, evt=event("membership.deactivated"))
     assert result.decision.state == EntitlementState.CANCELED
     assert not result.decision.can_access
 
