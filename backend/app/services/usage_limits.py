@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
+from app.core.config import settings
 from sqlalchemy.orm import Session
 
 from app.models.billing import Plan, Subscription
