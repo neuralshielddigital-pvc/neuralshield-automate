@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - feature/agency-whop-adapter-foundation
   workflow_dispatch:
 
 permissions:
