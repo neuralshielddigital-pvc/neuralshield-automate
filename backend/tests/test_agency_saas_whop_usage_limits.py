@@ -1,5 +1,5 @@
 """Default-off Whop tier enforcement integration tests; no external services."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -13,7 +13,7 @@ from app.models.base import Base
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.whop_saas_subscription import WhopSaasSubscriptionBinding
-from app.services.usage_limits import get_verified_whop_tier
+from app.services.usage_limits import get_verified_whop_tier, whop_snapshot_is_fresh
 
 
 @pytest.fixture
@@ -95,3 +95,38 @@ def test_missing_verified_snapshot_cannot_grant(whop_tier_db):
     row.provider_observed_at = None
     db.commit()
     assert get_verified_whop_tier(db, user) is None
+
+
+def test_stale_whop_snapshot_does_not_grant_paid_limits(whop_tier_db):
+    db, user = whop_tier_db
+    row = add_subscription(db, user, tier="business")
+    row.provider_observed_at = datetime.now(timezone.utc) - timedelta(hours=25)
+    db.commit()
+    assert get_verified_whop_tier(db, user) is None
+
+
+def test_future_whop_snapshot_does_not_grant_paid_limits(whop_tier_db):
+    db, user = whop_tier_db
+    row = add_subscription(db, user)
+    row.provider_observed_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    db.commit()
+    assert get_verified_whop_tier(db, user) is None
+
+
+def test_recent_provider_snapshot_still_grants(whop_tier_db):
+    db, user = whop_tier_db
+    row = add_subscription(db, user, tier="pro")
+    row.provider_observed_at = datetime.now(timezone.utc) - timedelta(hours=23)
+    db.commit()
+    assert get_verified_whop_tier(db, user) == "pro"
+
+
+def test_freshness_boundary_and_invalid_clock():
+    now = datetime(2026, 11, 16, tzinfo=timezone.utc)
+    assert whop_snapshot_is_fresh(now, now=now)
+    assert whop_snapshot_is_fresh(now - timedelta(hours=24), now=now)
+    assert not whop_snapshot_is_fresh(now - timedelta(hours=24, seconds=1), now=now)
+    assert not whop_snapshot_is_fresh(now + timedelta(seconds=1), now=now)
+    assert not whop_snapshot_is_fresh(None, now=now)
+    with pytest.raises(ValueError, match="timezone"):
+        whop_snapshot_is_fresh(now, now=datetime(2026, 11, 16))
