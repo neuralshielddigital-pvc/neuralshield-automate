@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.whop_saas_subscription import WhopSaasSubscriptionBinding
@@ -35,6 +36,62 @@ class SQLAlchemyWhopSaasBindingRepository:
         if lock:
             statement = statement.with_for_update()
         return self.db.scalar(statement)
+
+    def create_binding_if_absent(self, binding: AccountBinding) -> bool:
+        """Insert a disabled binding; reject claims by a different user.
+
+        A unique provider_subscription_id index serializes first claim across
+        workers. On unique collision, check the committed owner. No subscription
+        tier or paid access is written by this method.
+        """
+        if (
+            not binding.subscription_id.strip()
+            or not binding.provider_customer_id.strip()
+            or not binding.user_id.strip()
+            or not binding.tenant_id.strip()
+        ):
+            raise ValueError("Incomplete verified account binding")
+        try:
+            tenant_id = UUID(binding.tenant_id)
+            user_id = UUID(binding.user_id)
+        except ValueError as exc:
+            raise ValueError("Invalid authenticated tenant or user identity") from exc
+        existing = self._row(binding.subscription_id)
+        if existing is not None:
+            if (
+                existing.provider_customer_id == binding.provider_customer_id
+                and existing.tenant_id == tenant_id
+                and existing.user_id == user_id
+            ):
+                return False
+            raise ValueError("Subscription already belongs to a different SaaS account")
+        try:
+            self.db.add(WhopSaasSubscriptionBinding(
+                provider_subscription_id=binding.subscription_id,
+                provider_customer_id=binding.provider_customer_id,
+                tenant_id=tenant_id, user_id=user_id,
+                tier="unverified", access_state="inactive", access_enabled=False,
+                provider_observed_at=None,
+            ))
+            self.db.commit()
+            return True
+        except IntegrityError:
+            self.db.rollback()
+            # A concurrent insert may have won the unique subscription key.
+            # Fail closed if any unrelated FK/constraint error occurred.
+            existing = self._row(binding.subscription_id)
+            if existing is None:
+                raise
+            if (
+                existing.provider_customer_id == binding.provider_customer_id
+                and existing.tenant_id == tenant_id
+                and existing.user_id == user_id
+            ):
+                return False
+            raise ValueError("Subscription already belongs to a different SaaS account")
+        except Exception:
+            self.db.rollback()
+            raise
 
     def list_due_subscription_ids(self, *, before: datetime, limit: int) -> list[str]:
         """Select only pre-existing identities due for provider reconciliation.
