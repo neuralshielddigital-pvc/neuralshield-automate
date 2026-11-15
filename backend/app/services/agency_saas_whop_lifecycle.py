@@ -22,15 +22,17 @@ from app.services.agency_saas_whop_guardrails import (
 
 
 ALLOWED_EVENTS = frozenset({
-    "membership.went_valid",
-    "membership.went_invalid",
+    # Match event labels actually offered in the merchant's Whop dashboard.
+    # Event payload shapes and provider subscription retrieval remain gated
+    # pending a verified official API contract and signed end-to-end fixtures.
+    "membership.activated",
+    "membership.deactivated",
+    "membership.cancel_at_period_end_changed",
     "membership.updated",
     "payment.succeeded",
     "payment.failed",
     "refund.created",
     "refund.updated",
-    "dispute.created",
-    "dispute.updated",
 })
 
 
