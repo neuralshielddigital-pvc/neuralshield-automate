@@ -162,3 +162,36 @@ def test_missing_authorized_binding_cannot_grant(setup):
     assert result.failed == 1
     assert not provider.lookups
     assert db.query(WhopSaasSubscriptionBinding).count() == 1
+
+
+def test_reconciliation_rejects_cross_customer_snapshot_without_grant(setup):
+    db, user = setup
+    bind(db, user, "victim")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class WrongCustomerProvider(FakeProvider):
+        def retrieve_verified_subscription(self, subscription_id):
+            facts = super().retrieve_verified_subscription(subscription_id)
+            from dataclasses import replace
+            return replace(facts, customer_id="cus_other_account")
+
+    result = run(repo, WrongCustomerProvider())
+    assert result.failed == 1 and result.updated == 0
+    assert result.failed_subscription_ids == ("sub_victim",)
+    assert repo.get_decision("sub_victim") is None
+
+
+def test_reconciliation_rejects_mismatched_subscription_identity(setup):
+    db, user = setup
+    bind(db, user, "victim")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class WrongSubscriptionProvider(FakeProvider):
+        def retrieve_verified_subscription(self, subscription_id):
+            facts = super().retrieve_verified_subscription(subscription_id)
+            from dataclasses import replace
+            return replace(facts, subscription_id="sub_other")
+
+    result = run(repo, WrongSubscriptionProvider())
+    assert result.failed == 1 and result.updated == 0
+    assert repo.get_decision("sub_victim") is None
