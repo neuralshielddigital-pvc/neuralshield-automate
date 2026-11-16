@@ -332,3 +332,45 @@ def test_reconciliation_rejects_naive_cutoff_before_any_lookup(setup):
             due_before=datetime(2026, 11, 16),
         )
     assert provider.lookups == []
+
+
+def test_reconciliation_calls_failure_alert_with_only_failed_ids(setup):
+    db, user = setup
+    bind(db, user, "alert")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    provider.fail_ids.add("sub_alert")
+    alerts = []
+
+    def alert_on_failure(*, failed_subscription_ids, examined):
+        alerts.append((failed_subscription_ids, examined))
+
+    report = reconcile_due_whop_saas_subscriptions(
+        provider=provider, repository=repo, candidates=repo,
+        expected_merchant_id="biz_synthetic",
+        allowed_plans={PLAN.checkout_plan_id: PLAN},
+        due_before=NOW, alert_on_failure=alert_on_failure,
+    )
+    assert report.failed == 1
+    assert alerts == [(("sub_alert",), 1)]
+    assert repo.get_decision("sub_alert") is None
+
+
+def test_reconciliation_alert_delivery_failure_is_not_silent(setup):
+    db, user = setup
+    bind(db, user, "alert")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    provider.fail_ids.add("sub_alert")
+
+    def failing_alert(*, failed_subscription_ids, examined):
+        raise RuntimeError("Alert transport unavailable")
+
+    with pytest.raises(RuntimeError, match="Alert transport unavailable"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=repo,
+            expected_merchant_id="biz_synthetic",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW, alert_on_failure=failing_alert,
+        )
+    assert repo.get_decision("sub_alert") is None
