@@ -374,3 +374,43 @@ def test_reconciliation_alert_delivery_failure_is_not_silent(setup):
             due_before=NOW, alert_on_failure=failing_alert,
         )
     assert repo.get_decision("sub_alert") is None
+
+
+
+def test_strict_reconciliation_signals_partial_failure_after_alert(setup):
+    """A scheduler must not mark a partially failed batch successful."""
+    db, user = setup
+    bind(db, user, "failed")
+    bind(db, user, "healthy")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    provider.fail_ids.add("sub_failed")
+    alerts = []
+
+    def alert_on_failure(*, failed_subscription_ids, examined):
+        alerts.append((failed_subscription_ids, examined))
+
+    with pytest.raises(RuntimeError, match="failed for 1 subscriptions"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=repo,
+            expected_merchant_id="biz_synthetic",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW, alert_on_failure=alert_on_failure,
+            raise_on_failure=True,
+        )
+    assert alerts == [(("sub_failed",), 2)]
+    assert repo.get_decision("sub_failed") is None
+    assert repo.get_decision("sub_healthy").can_access is True
+
+
+def test_strict_reconciliation_succeeds_when_every_record_verified(setup):
+    db, user = setup
+    bind(db, user, "healthy")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    report = reconcile_due_whop_saas_subscriptions(
+        provider=FakeProvider(), repository=repo, candidates=repo,
+        expected_merchant_id="biz_synthetic",
+        allowed_plans={PLAN.checkout_plan_id: PLAN},
+        due_before=NOW, raise_on_failure=True,
+    )
+    assert report.failed == 0 and report.updated == 1
