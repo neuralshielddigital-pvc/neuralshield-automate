@@ -112,3 +112,13 @@ def test_untrusted_membership_fields_are_bounded_and_not_usable_for_identity(cha
     with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(payload(**change))):
         with pytest.raises(WhopMembershipLookupError):
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+
+
+@pytest.mark.parametrize("raw_response", [
+    b'{"id":"mem_123ABC","id":"mem_other","user_id":"user_abc123","status":"active","updated_at":"2026-11-16T00:00:00Z"}',
+    b'{"id":"mem_123ABC","user_id":"user_abc123","status":"active","updated_at":"2026-11-16T00:00:00Z","metadata":{"owner":"a","owner":"b"}}',
+])
+def test_duplicate_provider_json_keys_fail_closed(raw_response):
+    with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(raw_response)):
+        with pytest.raises(WhopMembershipLookupError):
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
