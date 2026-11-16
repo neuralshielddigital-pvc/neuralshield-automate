@@ -195,3 +195,47 @@ def test_reconciliation_rejects_mismatched_subscription_identity(setup):
     result = run(repo, WrongSubscriptionProvider())
     assert result.failed == 1 and result.updated == 0
     assert repo.get_decision("sub_victim") is None
+
+
+@pytest.mark.parametrize("override", [
+    {"merchant_id": "biz_other"},
+    {"product_id": "prod_other"},
+    {"checkout_plan_id": "plan_other"},
+    {"amount_usd_cents": 5900},
+    {"currency": "EUR"},
+    {"billing_interval": "year"},
+])
+def test_reconciliation_rejects_provider_plan_or_price_mismatch(setup, override):
+    """A signed or authenticated lookup is not sufficient to grant wrong-tier access."""
+    db, user = setup
+    bind(db, user, "guarded")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class MismatchedProvider(FakeProvider):
+        def retrieve_verified_subscription(self, subscription_id):
+            from dataclasses import replace
+            return replace(super().retrieve_verified_subscription(subscription_id), **override)
+
+    result = run(repo, MismatchedProvider())
+    assert result.examined == 1 and result.failed == 1 and result.updated == 0
+    assert repo.get_decision("sub_guarded") is None
+
+
+def test_reconciliation_does_not_refresh_paid_access_on_provider_outage(setup):
+    """A provider outage cannot move the last trusted observation forward."""
+    db, user = setup
+    bind(db, user, "outage")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    assert run(repo, provider).updated == 1
+    original = repo.get_decision("sub_outage")
+    row = db.query(WhopSaasSubscriptionBinding).filter_by(
+        provider_subscription_id="sub_outage"
+    ).one()
+    original_observed_at = row.provider_observed_at
+    provider.fail_ids.add("sub_outage")
+    result = run(repo, provider, cutoff=NOW + timedelta(hours=1))
+    assert result.failed == 1 and result.updated == 0
+    db.refresh(row)
+    assert row.provider_observed_at == original_observed_at
+    assert repo.get_decision("sub_outage") == original
