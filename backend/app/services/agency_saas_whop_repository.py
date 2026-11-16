@@ -63,7 +63,11 @@ class SQLAlchemyWhopSaasBindingRepository:
                 and existing.tenant_id == tenant_id
                 and existing.user_id == user_id
             ):
+                # The initial SELECT starts a transaction. An idempotent claim
+                # must not leave it open across later request processing.
+                self.db.rollback()
                 return False
+            self.db.rollback()
             raise ValueError("Subscription already belongs to a different SaaS account")
         try:
             self.db.add(WhopSaasSubscriptionBinding(
