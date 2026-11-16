@@ -202,3 +202,46 @@ def test_conflicting_claim_releases_database_transaction(bound_db):
     with pytest.raises(ValueError, match="different SaaS account"):
         repository.create_binding_if_absent(attacker)
     assert not bound_db.in_transaction()
+
+
+@pytest.mark.parametrize("conflicting_customer", [False, True])
+def test_concurrent_claim_collision_releases_followup_read_transaction(
+    bound_db, monkeypatch, conflicting_customer
+):
+    """A losing insert must close the transaction opened by its owner lookup."""
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+
+    repository = SQLAlchemyWhopSaasBindingRepository(bound_db)
+    binding = repository.get_binding("sub_synthetic")
+    bound_db.rollback()
+    existing = bound_db.query(WhopSaasSubscriptionBinding).one()
+    bound_db.rollback()
+    lookups = 0
+
+    def collision_lookup(subscription_id):
+        nonlocal lookups
+        lookups += 1
+        if lookups == 1:
+            return None  # another worker inserts between initial read and write
+        bound_db.execute(select(WhopSaasSubscriptionBinding.id).limit(1))
+        if conflicting_customer:
+            from types import SimpleNamespace
+            return SimpleNamespace(
+                provider_customer_id="cus_different",
+                tenant_id=existing.tenant_id, user_id=existing.user_id,
+            )
+        return existing
+
+    def duplicate_insert(_row):
+        raise IntegrityError("INSERT", {}, Exception("synthetic unique conflict"))
+
+    monkeypatch.setattr(repository, "_row", collision_lookup)
+    monkeypatch.setattr(bound_db, "add", duplicate_insert)
+    if conflicting_customer:
+        with pytest.raises(ValueError, match="different SaaS account"):
+            repository.create_binding_if_absent(binding)
+    else:
+        assert repository.create_binding_if_absent(binding) is False
+    assert lookups == 2
+    assert not bound_db.in_transaction()
