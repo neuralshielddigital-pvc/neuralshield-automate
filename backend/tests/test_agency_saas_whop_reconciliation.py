@@ -286,3 +286,45 @@ def test_reconciliation_rejects_conflicting_same_timestamp_state(setup):
     result = run(repo, provider, cutoff=NOW + timedelta(hours=1))
     assert result.failed == 1 and result.updated == 0
     assert repo.get_decision("sub_conflict").can_access is True
+
+
+@pytest.mark.parametrize("candidate_ids", [
+    ["sub_a", "sub_a"],  # duplicate could trigger repeated entitlement writes
+    ["sub_a", ""],       # blank provider identity
+    ["sub_a", None],     # malformed provider identity
+    ["sub_a", "sub_b"],  # exceeds the requested single-record bound
+])
+def test_reconciliation_rejects_invalid_candidate_batch_before_provider_lookup(setup, candidate_ids):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+
+    class InvalidCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            return candidate_ids
+
+    with pytest.raises(ValueError, match="Invalid or unbounded"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=InvalidCandidates(),
+            expected_merchant_id="biz_synthetic",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW, limit=1,
+        )
+    assert provider.lookups == []
+    assert repo.get_decision("sub_a") is None
+
+
+def test_reconciliation_rejects_naive_cutoff_before_any_lookup(setup):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    with pytest.raises(ValueError, match="timezone aware"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=repo,
+            expected_merchant_id="biz_synthetic",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=datetime(2026, 11, 16),
+        )
+    assert provider.lookups == []
