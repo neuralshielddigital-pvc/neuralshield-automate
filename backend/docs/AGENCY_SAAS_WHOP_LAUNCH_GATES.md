@@ -120,3 +120,27 @@ or redirect it without verifying existing dependencies.
 binding, deployment access or buyer acceptance check is not verified, release
 status remains **NOT LIVE**. User approval to launch is granted; blockers
 are engineering/production evidence, not missing user approval.
+
+## Official membership contract checkpoint (2026-11-16)
+
+Official source: https://docs.whop.com/api-reference/memberships/retrieve-membership.md
+(versioned OpenAPI page, currently advertising `2026-11-14-1`). The current API
+exposes authenticated `GET https://api.whop.com/api/v1/memberships/{id}`,
+with bearer scope `member:basic:read`. The path identifier is a **`mem_`**
+membership ID (or license key), NOT an assumed `sub_` subscription ID.
+The documented response includes `user_id` (buyer, possibly null),
+`variant_id` (`plan_`), `updated_at`, and `status`. Documented statuses:
+`trialing`, `active`, `past_due`, `completed`, `canceled`,
+`expired`, `unresolved`. The documentation says `past_due` is a
+post-failure grace period, `completed` can be a one-time purchase, and
+`canceled`/`expired` do not grant access.
+
+**Integration mismatch requiring code review:** existing synthetic provider
+facts use a generic `subscription_id` and `customer_id`; do not silently
+map them to Whop `mem_` and `user_id`. First verify seller account,
+product, plan price/interval, membership ownership, billing status, payment
+and refund relationships from the complete pinned OpenAPI schema. A Whop
+`user_id` alone is not a verified SaaS login/tenant authorization. Keep
+provider adapter and public checkout OFF until this mapping is implemented
+and covered by contract fixtures plus signed-event acceptance tests. This
+checkpoint is **documentation only**, not proof of a working adapter.
