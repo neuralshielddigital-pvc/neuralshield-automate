@@ -37,9 +37,9 @@ class WhopMembershipReader:
     """
 
     def __init__(self, token: str, *, timeout_seconds: float = 5.0) -> None:
-        if not isinstance(token, str) or not token.strip():
+        if (not isinstance(token, str) or not token.strip() or token != token.strip()\n                or any(ord(char) < 33 or ord(char) > 126 for char in token)):
             raise ValueError("Whop membership read credential is required")
-        if not 0 < timeout_seconds <= 30:
+        if not isinstance(timeout_seconds, (int, float)) or isinstance(timeout_seconds, bool) or not 0 < timeout_seconds <= 30:
             raise ValueError("Invalid Whop request timeout")
         self._token = token
         self._timeout = timeout_seconds
