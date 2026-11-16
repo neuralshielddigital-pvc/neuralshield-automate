@@ -98,3 +98,17 @@ def test_rejects_unsafe_bearer_tokens_before_network(token):
 def test_rejects_invalid_timeout_configuration(timeout):
     with pytest.raises(ValueError):
         WhopMembershipReader("test-secret", timeout_seconds=timeout)
+
+
+@pytest.mark.parametrize("change", [
+    {"user_id": "user_abc/other"},
+    {"user_id": "user_" + "A" * 200},
+    {"status": " active "},
+    {"status": "x" * 200},
+    {"variant_id": "var_123/other"},
+    {"variant_id": "v" * 200},
+])
+def test_untrusted_membership_fields_are_bounded_and_not_usable_for_identity(change):
+    with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(payload(**change))):
+        with pytest.raises(WhopMembershipLookupError):
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
