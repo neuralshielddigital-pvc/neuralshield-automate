@@ -1,5 +1,4 @@
 """No-network contract tests for authenticated Whop membership retrieval."""
-import io
 import json
 from unittest.mock import patch
 
@@ -51,7 +50,7 @@ def test_authenticated_get_uses_fixed_whop_host_and_bounded_timeout():
     assert membership.updated_at.utcoffset().total_seconds() == 0
 
 
-@pytest.mark.parametrize("identifier", ["../payments", "mem_abc/def", "sub_123", "", "mem_%2f"])
+@pytest.mark.parametrize("identifier", ["../payments", "mem_abc/def", "sub_123", "", "mem_%2f", "mem_" + "A" * 125, "mem_" + "A" * 5000])
 def test_rejects_untrusted_lookup_paths_before_network(identifier):
     with patch("app.services.agency_saas_whop_membership_reader.urlopen") as fetch:
         with pytest.raises(ValueError):
