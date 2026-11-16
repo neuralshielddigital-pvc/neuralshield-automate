@@ -91,7 +91,11 @@ class SQLAlchemyWhopSaasBindingRepository:
                 and existing.tenant_id == tenant_id
                 and existing.user_id == user_id
             ):
+                # The collision follow-up SELECT opens a new transaction.
+                # Release it before returning an idempotent claim result.
+                self.db.rollback()
                 return False
+            self.db.rollback()
             raise ValueError("Subscription already belongs to a different SaaS account")
         except Exception:
             self.db.rollback()
