@@ -29,6 +29,16 @@ class WhopMembership:
     updated_at: datetime
 
 
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict:
+    """Reject ambiguous provider JSON, including duplicate nested object keys."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate provider JSON field")
+        result[key] = value
+    return result
+
+
 class WhopMembershipReader:
     """Official GET /api/v1/memberships/{id}, requiring member:basic:read.
 
@@ -66,7 +76,7 @@ class WhopMembershipReader:
                 payload = response.read(65537)
                 if len(payload) > 65536:
                     raise WhopMembershipLookupError("Whop membership response too large")
-            data = json.loads(payload)
+            data = json.loads(payload, object_pairs_hook=_unique_json_object)
             if not isinstance(data, dict):
                 raise ValueError("Invalid response object")
             if data.get("id") != membership_id:
