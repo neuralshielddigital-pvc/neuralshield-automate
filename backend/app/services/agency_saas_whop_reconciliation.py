@@ -52,6 +52,7 @@ def reconcile_due_whop_saas_subscriptions(
     due_before: datetime,
     limit: int = 100,
     alert_on_failure: ReconciliationAlertSink | None = None,
+    raise_on_failure: bool = False,
 ) -> ReconciliationReport:
     """Refresh an explicitly bounded set of *already bound* subscriptions.
 
@@ -116,4 +117,9 @@ def reconcile_due_whop_saas_subscriptions(
             failed_subscription_ids=report.failed_subscription_ids,
             examined=report.examined,
         )
+    if report.failed and raise_on_failure:
+        # Scheduled invocations must be able to signal partial failure to the
+        # supervisor, even when the alert sink successfully delivered a notice.
+        # Never include customer identities or provider exceptions in the error.
+        raise RuntimeError(f"Whop SaaS reconciliation failed for {report.failed} subscriptions")
     return report
