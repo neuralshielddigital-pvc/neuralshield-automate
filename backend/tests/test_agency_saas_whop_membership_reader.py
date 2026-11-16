@@ -84,3 +84,17 @@ def test_malformed_encoding_or_out_of_range_timestamp_fails_closed(raw_response)
     with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(raw_response)):
         with pytest.raises(WhopMembershipLookupError):
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+
+
+@pytest.mark.parametrize("token", ["", " token", "token ", "token\nInjected: value", "token\r", "token\t", "tökén"])
+def test_rejects_unsafe_bearer_tokens_before_network(token):
+    with patch("app.services.agency_saas_whop_membership_reader.urlopen") as fetch:
+        with pytest.raises(ValueError):
+            WhopMembershipReader(token)
+        fetch.assert_not_called()
+
+
+@pytest.mark.parametrize("timeout", [0, -1, 31, True, "5"])
+def test_rejects_invalid_timeout_configuration(timeout):
+    with pytest.raises(ValueError):
+        WhopMembershipReader("test-secret", timeout_seconds=timeout)
