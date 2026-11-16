@@ -11,6 +11,7 @@ paid access (the existing 24-hour usage-limit TTL applies independently).
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from datetime import datetime, timezone
 from typing import Mapping, Protocol, Sequence
 
@@ -59,9 +60,13 @@ def reconcile_due_whop_saas_subscriptions(
     if not expected_merchant_id.startswith("biz_") or not allowed_plans:
         raise ValueError("Whop SaaS provider configuration is not ready")
     ids = list(candidates.list_due_subscription_ids(before=due_before, limit=limit))
-    if len(ids) > limit or len(set(ids)) != len(ids) or any(
-        not isinstance(sid, str) or not sid.strip() for sid in ids
-    ):
+    # Validate before deduplicating: unhashable or malformed IDs must never
+    # trigger provider lookups or leak into scheduler logs.
+    if len(ids) > limit or any(
+        not isinstance(sid, str)
+        or re.fullmatch(r"[A-Za-z0-9_-]{1,128}", sid) is None
+        for sid in ids
+    ) or len(set(ids)) != len(ids):
         raise ValueError("Invalid or unbounded reconciliation candidates")
     updated = unchanged = 0
     failures: list[str] = []
