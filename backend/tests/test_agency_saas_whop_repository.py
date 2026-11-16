@@ -168,3 +168,13 @@ def test_altered_existing_binding_detected(bound_db):
             ),
             decision(),
         )
+
+
+def test_idempotent_replay_releases_database_transaction(bound_db):
+    """A duplicate signed delivery must not retain a PostgreSQL row lock."""
+    repository = SQLAlchemyWhopSaasBindingRepository(bound_db)
+    binding = repository.get_binding("sub_synthetic")
+    assert repository.apply_if_current(binding, decision()) is True
+    assert repository.apply_if_current(binding, decision()) is False
+    assert not bound_db.in_transaction()
+    assert repository.get_decision("sub_synthetic").can_access is True
