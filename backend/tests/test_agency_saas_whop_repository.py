@@ -18,6 +18,7 @@ from app.services.agency_saas_whop_guardrails import (
     EntitlementState, SubscriptionDecision,
 )
 from app.services.agency_saas_whop_repository import SQLAlchemyWhopSaasBindingRepository
+from app.services.agency_saas_whop_lifecycle import AccountBinding
 
 
 STAMP = datetime(2026, 11, 15, tzinfo=timezone.utc)
@@ -178,3 +179,26 @@ def test_idempotent_replay_releases_database_transaction(bound_db):
     assert repository.apply_if_current(binding, decision()) is False
     assert not bound_db.in_transaction()
     assert repository.get_decision("sub_synthetic").can_access is True
+
+
+def test_existing_claim_replay_releases_database_transaction(bound_db):
+    """Repeated authorized claims must not leave a SQLAlchemy transaction open."""
+    repository = SQLAlchemyWhopSaasBindingRepository(bound_db)
+    binding = repository.get_binding("sub_synthetic")
+    assert repository.create_binding_if_absent(binding) is False
+    assert not bound_db.in_transaction()
+    assert bound_db.query(WhopSaasSubscriptionBinding).count() == 1
+
+
+def test_conflicting_claim_releases_database_transaction(bound_db):
+    repository = SQLAlchemyWhopSaasBindingRepository(bound_db)
+    binding = repository.get_binding("sub_synthetic")
+    attacker = AccountBinding(
+        subscription_id=binding.subscription_id,
+        provider_customer_id="cus_other",
+        tenant_id=binding.tenant_id,
+        user_id=binding.user_id,
+    )
+    with pytest.raises(ValueError, match="different SaaS account"):
+        repository.create_binding_if_absent(attacker)
+    assert not bound_db.in_transaction()
