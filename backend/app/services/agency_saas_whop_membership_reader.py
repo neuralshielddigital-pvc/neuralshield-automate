@@ -75,11 +75,11 @@ class WhopMembershipReader:
             status = data.get("status")
             updated_at = data.get("updated_at")
             variant_id = data.get("variant_id")
-            if not isinstance(user_id, str) or not user_id.startswith("user_"):
+            if not isinstance(user_id, str) or len(user_id) > 128 or re.fullmatch(r"user_[A-Za-z0-9]+", user_id) is None:
                 raise ValueError("Missing Whop buyer identity")
-            if not isinstance(status, str) or not status.strip():
+            if not isinstance(status, str) or not status.strip() or len(status) > 64 or status != status.strip():
                 raise ValueError("Missing membership status")
-            if variant_id is not None and not isinstance(variant_id, str):
+            if variant_id is not None and (not isinstance(variant_id, str) or len(variant_id) > 128 or re.fullmatch(r"[A-Za-z0-9_]+", variant_id) is None):
                 raise ValueError("Invalid membership variant")
             if not isinstance(updated_at, str):
                 raise ValueError("Missing membership update time")
