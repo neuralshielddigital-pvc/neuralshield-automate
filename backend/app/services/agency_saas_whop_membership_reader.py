@@ -12,7 +12,6 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -46,7 +45,7 @@ class WhopMembershipReader:
         self._timeout = timeout_seconds
 
     def retrieve(self, membership_id: str) -> WhopMembership:
-        if not isinstance(membership_id, str) or re.fullmatch(
+        if not isinstance(membership_id, str) or len(membership_id) > 128 or re.fullmatch(
             r"mem_[A-Za-z0-9]+", membership_id
         ) is None:
             raise ValueError("Invalid Whop membership identifier")
@@ -87,5 +86,5 @@ class WhopMembershipReader:
             if observed.tzinfo is None or observed.utcoffset() is None:
                 raise ValueError("Unaware membership timestamp")
             return WhopMembership(membership_id, user_id, variant_id, status, observed)
-        except (HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError, json.JSONDecodeError):
             raise WhopMembershipLookupError("Whop membership lookup or contract validation failed") from None
