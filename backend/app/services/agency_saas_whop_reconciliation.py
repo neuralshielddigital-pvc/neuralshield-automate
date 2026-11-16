@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 from datetime import datetime, timezone
-from typing import Mapping, Protocol, Sequence
+from typing import Callable, Mapping, Protocol, Sequence
 
 from app.services.agency_saas_whop_guardrails import (
     RecurringPlan, validate_recurring_snapshot,
@@ -21,6 +21,10 @@ from app.services.agency_saas_whop_guardrails import (
 from app.services.agency_saas_whop_lifecycle import (
     AccountBinding, BoundSubscriptionRepository, WhopSubscriptionProvider,
 )
+
+
+class ReconciliationAlertSink(Protocol):
+    def __call__(self, *, failed_subscription_ids: tuple[str, ...], examined: int) -> None: ...
 
 
 class ReconciliationCandidates(Protocol):
@@ -47,6 +51,7 @@ def reconcile_due_whop_saas_subscriptions(
     allowed_plans: Mapping[str, RecurringPlan],
     due_before: datetime,
     limit: int = 100,
+    alert_on_failure: ReconciliationAlertSink | None = None,
 ) -> ReconciliationReport:
     """Refresh an explicitly bounded set of *already bound* subscriptions.
 
@@ -100,7 +105,15 @@ def reconcile_due_whop_saas_subscriptions(
             # No provider credentials or buyer information in the report.
             # An external scheduler must alert and retry failed identities.
             failures.append(subscription_id)
-    return ReconciliationReport(
+    report = ReconciliationReport(
         examined=len(ids), updated=updated, unchanged=unchanged,
         failed=len(failures), failed_subscription_ids=tuple(failures),
     )
+    if report.failed and alert_on_failure is not None:
+        # Fail the job when alert delivery fails; never silently discard
+        # reconciliation failures as a successful scheduled run.
+        alert_on_failure(
+            failed_subscription_ids=report.failed_subscription_ids,
+            examined=report.examined,
+        )
+    return report
