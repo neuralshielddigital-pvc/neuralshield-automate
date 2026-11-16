@@ -239,3 +239,44 @@ def test_reconciliation_does_not_refresh_paid_access_on_provider_outage(setup):
     db.refresh(row)
     assert row.provider_observed_at == original_observed_at
     assert repo.get_decision("sub_outage") == original
+
+
+
+@pytest.mark.parametrize("terminal_status", ["canceled", "expired", "refunded"])
+def test_reconciliation_never_reactivates_terminal_subscription(setup, terminal_status):
+    """A later active snapshot cannot silently resurrect a terminal entitlement."""
+    db, user = setup
+    bind(db, user, "terminal")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    provider.statuses["sub_terminal"] = terminal_status
+    assert run(repo, provider).updated == 1
+    assert repo.get_decision("sub_terminal").can_access is False
+
+    # Simulate a later provider observation, not a replay of the same snapshot.
+    from dataclasses import replace
+    class ReactivationProvider(FakeProvider):
+        def retrieve_verified_subscription(self, subscription_id):
+            return replace(
+                super().retrieve_verified_subscription(subscription_id),
+                observed_at=NOW + timedelta(seconds=1),
+            )
+
+    # The validator must reject the terminal-to-active transition regardless
+    # of timestamp; the provider client is not allowed to override it.
+    result = run(repo, ReactivationProvider(), cutoff=NOW + timedelta(hours=1))
+    assert result.failed == 1 and result.updated == 0
+    assert repo.get_decision("sub_terminal").can_access is False
+
+
+def test_reconciliation_rejects_conflicting_same_timestamp_state(setup):
+    """An event with the same observation time cannot flip a persisted decision."""
+    db, user = setup
+    bind(db, user, "conflict")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    assert run(repo, provider).updated == 1
+    provider.statuses["sub_conflict"] = "refunded"
+    result = run(repo, provider, cutoff=NOW + timedelta(hours=1))
+    assert result.failed == 1 and result.updated == 0
+    assert repo.get_decision("sub_conflict").can_access is True
