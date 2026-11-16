@@ -250,7 +250,13 @@ def test_reconciliation_never_reactivates_terminal_subscription(setup, terminal_
     repo = SQLAlchemyWhopSaasBindingRepository(db)
     provider = FakeProvider()
     provider.statuses["sub_terminal"] = terminal_status
-    assert run(repo, provider).updated == 1
+    class EarlierTerminalProvider(FakeProvider):
+        def retrieve_verified_subscription(self, subscription_id):
+            from dataclasses import replace
+            return replace(super().retrieve_verified_subscription(subscription_id), observed_at=NOW - timedelta(seconds=2))
+    terminal_provider = EarlierTerminalProvider()
+    terminal_provider.statuses["sub_terminal"] = terminal_status
+    assert run(repo, terminal_provider).updated == 1
     assert repo.get_decision("sub_terminal").can_access is False
 
     # Simulate a later provider observation, not a replay of the same snapshot.
@@ -259,7 +265,7 @@ def test_reconciliation_never_reactivates_terminal_subscription(setup, terminal_
         def retrieve_verified_subscription(self, subscription_id):
             return replace(
                 super().retrieve_verified_subscription(subscription_id),
-                observed_at=NOW + timedelta(seconds=1),
+                observed_at=NOW,
             )
 
     # The validator must reject the terminal-to-active transition regardless
