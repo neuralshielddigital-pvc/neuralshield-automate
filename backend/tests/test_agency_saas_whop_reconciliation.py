@@ -292,6 +292,10 @@ def test_reconciliation_rejects_conflicting_same_timestamp_state(setup):
     ["sub_a", "sub_a"],  # duplicate could trigger repeated entitlement writes
     ["sub_a", ""],       # blank provider identity
     ["sub_a", None],     # malformed provider identity
+    ["sub_a", ["sub_b"]],  # unhashable provider identity
+    ["sub_a", "sub_b "],  # whitespace must not reach provider lookup
+    ["sub_a", "sub_b/other"],  # path-like provider identity
+    ["sub_a", "x" * 129],  # excessive provider identity length
     ["sub_a", "sub_b"],  # exceeds the requested single-record bound
 ])
 def test_reconciliation_rejects_invalid_candidate_batch_before_provider_lookup(setup, candidate_ids):
