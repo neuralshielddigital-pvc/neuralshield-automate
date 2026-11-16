@@ -74,3 +74,13 @@ def test_rejects_oversized_response():
     with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(b"x" * 65537)):
         with pytest.raises(WhopMembershipLookupError):
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+
+
+@pytest.mark.parametrize("raw_response", [
+    b"\\xff\\xfe\\xfa",  # invalid UTF-8 JSON payload
+    b'{"id":"mem_123ABC","user_id":"user_abc123","status":"active","updated_at":"999999999999-01-01T00:00:00Z"}',
+])
+def test_malformed_encoding_or_out_of_range_timestamp_fails_closed(raw_response):
+    with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(raw_response)):
+        with pytest.raises(WhopMembershipLookupError):
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
