@@ -173,6 +173,10 @@ class SQLAlchemyWhopSaasBindingRepository:
                         and row.access_state == decision.state.value
                         and row.access_enabled == decision.can_access
                     ):
+                        # Release the SELECT FOR UPDATE lock on an idempotent
+                        # replay; otherwise the caller's session can retain a
+                        # PostgreSQL row lock until an unrelated request ends.
+                        self.db.rollback()
                         return False
                     raise ValueError("Conflicting same-time provider snapshot")
                 if (
