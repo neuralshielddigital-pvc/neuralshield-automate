@@ -198,7 +198,7 @@ def test_claim_rejects_noncanonical_ownership_proof_before_lookup(claim_env, cha
 @pytest.mark.parametrize("field,bad_value", [
     ("user_id", " leading"),
     ("tenant_id", "trailing "),
-    ("user_id", "control\\nchar"),
+    ("user_id", "control\nchar"),
     ("tenant_id", "x" * 129),
     ("user_id", "unicode_é"),
 ])
@@ -211,7 +211,7 @@ def test_claim_rejects_ambiguous_principal_identity_before_lookup(claim_env, fie
 
 
 @pytest.mark.parametrize("field,bad_value", [
-    ("subscription_id", "sub_unsafe\\n"),
+    ("subscription_id", "sub_unsafe\n"),
     ("customer_id", " cus_unsafe"),
     ("authorized_user_id", "x" * 129),
     ("authorized_tenant_id", "unicode_é"),
