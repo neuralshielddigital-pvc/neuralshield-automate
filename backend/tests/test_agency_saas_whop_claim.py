@@ -162,3 +162,34 @@ def test_other_principal_cannot_take_over_existing_binding(claim_env):
     row = db.query(WhopSaasSubscriptionBinding).one()
     assert str(row.user_id) == principal.user_id
     assert not row.access_enabled
+
+
+@pytest.mark.parametrize("changes", [
+    {"account_active": 1},
+    {"email_verified": "true"},
+    {"tenant_authorized": 1},
+    {"user_id": None},
+    {"tenant_id": 123},
+])
+def test_claim_rejects_noncanonical_principal_fields_before_lookup(claim_env, changes):
+    db, principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="principal"):
+        claim(db, replace(principal, **changes), proof, provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("changes", [
+    {"verified_by_provider": 1},
+    {"verified_for_session": "true"},
+    {"subscription_id": None},
+    {"customer_id": 123},
+    {"authorized_user_id": None},
+    {"authorized_tenant_id": 123},
+])
+def test_claim_rejects_noncanonical_ownership_proof_before_lookup(claim_env, changes):
+    db, principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="ownership"):
+        claim(db, principal, replace(proof, **changes), provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
