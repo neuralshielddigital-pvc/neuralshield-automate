@@ -105,6 +105,8 @@ def bind_verified_saas_subscription(
     snapshot: VerifiedSubscriptionFacts = provider.retrieve_verified_subscription(
         proof.subscription_id
     )
+    if not isinstance(snapshot, VerifiedSubscriptionFacts):
+        raise ValueError("Provider returned an invalid verified subscription snapshot")
     if (
         snapshot.subscription_id != proof.subscription_id
         or snapshot.customer_id != proof.customer_id
