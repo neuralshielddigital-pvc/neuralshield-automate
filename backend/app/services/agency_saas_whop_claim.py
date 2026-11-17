@@ -76,16 +76,20 @@ def bind_verified_saas_subscription(
     tested before any endpoint is permitted to invoke this function.
     """
     if (
-        not principal.account_active or not principal.email_verified
-        or not principal.tenant_authorized
-        or not principal.user_id.strip() or not principal.tenant_id.strip()
+        principal.account_active is not True or principal.email_verified is not True
+        or principal.tenant_authorized is not True
+        or not isinstance(principal.user_id, str) or not principal.user_id.strip()
+        or not isinstance(principal.tenant_id, str) or not principal.tenant_id.strip()
     ):
         raise ValueError("SaaS principal is not authorized to claim a subscription")
     if (
-        not proof.verified_by_provider or not proof.verified_for_session
+        proof.verified_by_provider is not True or proof.verified_for_session is not True
+        or not isinstance(proof.authorized_user_id, str)
+        or not isinstance(proof.authorized_tenant_id, str)
         or proof.authorized_user_id != principal.user_id
         or proof.authorized_tenant_id != principal.tenant_id
-        or not proof.subscription_id.strip() or not proof.customer_id.strip()
+        or not isinstance(proof.subscription_id, str) or not proof.subscription_id.strip()
+        or not isinstance(proof.customer_id, str) or not proof.customer_id.strip()
     ):
         raise ValueError("Missing verified customer-to-session ownership proof")
     snapshot: VerifiedSubscriptionFacts = provider.retrieve_verified_subscription(
