@@ -269,3 +269,29 @@ def test_claim_provider_failure_never_creates_binding(claim_env, provider_error)
         claim(db, principal, proof, provider)
     assert provider.lookups == [proof.subscription_id]
     assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("field,bad_value", [
+    ("user_id", "not-a-uuid"),
+    ("tenant_id", "12345678-1234-1234-1234-123456789ABC"),
+    ("user_id", "12345678123412341234123456789abc"),
+])
+def test_claim_rejects_noncanonical_principal_uuid_before_provider_lookup(claim_env, field, bad_value):
+    db, principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="principal"):
+        claim(db, replace(principal, **{field: bad_value}), proof, provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("field,bad_value", [
+    ("authorized_user_id", "not-a-uuid"),
+    ("authorized_tenant_id", "12345678-1234-1234-1234-123456789ABC"),
+    ("authorized_user_id", "12345678123412341234123456789abc"),
+])
+def test_claim_rejects_noncanonical_proof_uuid_before_provider_lookup(claim_env, field, bad_value):
+    db, principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="ownership"):
+        claim(db, principal, replace(proof, **{field: bad_value}), provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
