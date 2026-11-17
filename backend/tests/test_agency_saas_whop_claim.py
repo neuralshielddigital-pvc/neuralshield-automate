@@ -193,3 +193,32 @@ def test_claim_rejects_noncanonical_ownership_proof_before_lookup(claim_env, cha
         claim(db, principal, replace(proof, **changes), provider)
     assert provider.lookups == []
     assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("field,bad_value", [
+    ("user_id", " leading"),
+    ("tenant_id", "trailing "),
+    ("user_id", "control\\nchar"),
+    ("tenant_id", "x" * 129),
+    ("user_id", "unicode_é"),
+])
+def test_claim_rejects_ambiguous_principal_identity_before_lookup(claim_env, field, bad_value):
+    db, principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="principal"):
+        claim(db, replace(principal, **{field: bad_value}), proof, provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("field,bad_value", [
+    ("subscription_id", "sub_unsafe\\n"),
+    ("customer_id", " cus_unsafe"),
+    ("authorized_user_id", "x" * 129),
+    ("authorized_tenant_id", "unicode_é"),
+])
+def test_claim_rejects_ambiguous_proof_identity_before_lookup(claim_env, field, bad_value):
+    db, principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="ownership"):
+        claim(db, principal, replace(proof, **{field: bad_value}), provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
