@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Callable, Mapping, Protocol, Sequence
 
 from app.services.agency_saas_whop_guardrails import (
-    RecurringPlan, validate_recurring_snapshot,
+    RecurringPlan, VerifiedSubscriptionFacts, validate_recurring_snapshot,
 )
 from app.services.agency_saas_whop_lifecycle import (
     AccountBinding, BoundSubscriptionRepository, WhopSubscriptionProvider,
@@ -91,6 +91,8 @@ def reconcile_due_whop_saas_subscriptions(
             ):
                 raise ValueError("Missing authorized SaaS subscription binding")
             snapshot = provider.retrieve_verified_subscription(subscription_id)
+            if not isinstance(snapshot, VerifiedSubscriptionFacts):
+                raise ValueError("Provider returned an invalid verified subscription snapshot")
             if snapshot.subscription_id != subscription_id:
                 raise ValueError("Provider subscription identity mismatch")
             decision = validate_recurring_snapshot(
