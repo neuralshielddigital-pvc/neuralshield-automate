@@ -151,3 +151,11 @@ def test_membership_transport_disables_redirects_to_protect_bearer_token():
         with urlopen(request, timeout=3) as response:
             assert response.status == 200
         assert isinstance(factory.call_args.args[0], _NoRedirects)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_nonfinite_provider_json_constants_fail_closed(constant):
+    raw = payload().decode().replace('"status": "active"', '"status": "active", "unexpected": ' + constant)
+    with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(raw.encode())):
+        with pytest.raises(WhopMembershipLookupError):
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
