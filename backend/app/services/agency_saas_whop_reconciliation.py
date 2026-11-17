@@ -59,11 +59,11 @@ def reconcile_due_whop_saas_subscriptions(
     Returns failed identities to enable structured alerting and retry.
     No webhook event is assumed and no binding is created.
     """
-    if due_before.tzinfo is None or due_before.utcoffset() is None:
+    if not isinstance(due_before, datetime) or due_before.tzinfo is None or due_before.utcoffset() is None:
         raise ValueError("Reconciliation cutoff must be timezone aware")
-    if limit < 1 or limit > 100:
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1 or limit > 100:
         raise ValueError("Reconciliation limit must be between 1 and 100")
-    if not expected_merchant_id.startswith("biz_") or not allowed_plans:
+    if not isinstance(expected_merchant_id, str) or not expected_merchant_id.startswith("biz_") or not allowed_plans:
         raise ValueError("Whop SaaS provider configuration is not ready")
     ids = list(candidates.list_due_subscription_ids(before=due_before, limit=limit))
     # Validate before deduplicating: unhashable or malformed IDs must never
