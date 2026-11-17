@@ -232,3 +232,21 @@ def test_claim_rejects_malformed_provider_snapshot_without_binding(claim_env, in
         claim(db, principal, proof, provider)
     assert provider.lookups == [proof.subscription_id]
     assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("invalid_principal", [None, {}, [], "user", object()])
+def test_claim_rejects_untyped_principal_before_provider_lookup(claim_env, invalid_principal):
+    db, _principal, proof, provider = claim_env
+    with pytest.raises(ValueError, match="principal"):
+        claim(db, invalid_principal, proof, provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("invalid_proof", [None, {}, [], "verified", object()])
+def test_claim_rejects_untyped_proof_before_provider_lookup(claim_env, invalid_proof):
+    db, principal, _proof, provider = claim_env
+    with pytest.raises(ValueError, match="ownership"):
+        claim(db, principal, invalid_proof, provider)
+    assert provider.lookups == []
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
