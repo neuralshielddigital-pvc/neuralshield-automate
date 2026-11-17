@@ -507,3 +507,22 @@ def test_reconciliation_accepts_bounded_candidate_generator(setup):
         due_before=NOW, limit=2,
     )
     assert report.examined == 1 and report.updated == 1 and report.failed == 0
+
+
+@pytest.mark.parametrize("malformed_snapshot", [None, {}, [], "active", 123, object()])
+def test_reconciliation_rejects_malformed_provider_snapshot_without_grant(setup, malformed_snapshot):
+    """Malformed authenticated provider responses must not update paid entitlements."""
+    db, user = setup
+    bind(db, user, "malformed")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class MalformedProvider:
+        def retrieve_verified_subscription(self, subscription_id):
+            assert subscription_id == "sub_malformed"
+            return malformed_snapshot
+
+    result = run(repo, MalformedProvider())
+    assert result.examined == 1
+    assert result.failed == 1 and result.updated == 0
+    assert result.failed_subscription_ids == ("sub_malformed",)
+    assert repo.get_decision("sub_malformed") is None
