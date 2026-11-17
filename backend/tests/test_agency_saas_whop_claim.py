@@ -250,3 +250,22 @@ def test_claim_rejects_untyped_proof_before_provider_lookup(claim_env, invalid_p
         claim(db, principal, invalid_proof, provider)
     assert provider.lookups == []
     assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("provider_error", [
+    TimeoutError("synthetic provider timeout"),
+    ConnectionError("synthetic provider unavailable"),
+    RuntimeError("synthetic upstream failure"),
+])
+def test_claim_provider_failure_never_creates_binding(claim_env, provider_error):
+    db, principal, proof, provider = claim_env
+
+    def fail_lookup(subscription_id):
+        provider.lookups.append(subscription_id)
+        raise provider_error
+
+    provider.retrieve_verified_subscription = fail_lookup
+    with pytest.raises(type(provider_error)):
+        claim(db, principal, proof, provider)
+    assert provider.lookups == [proof.subscription_id]
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
