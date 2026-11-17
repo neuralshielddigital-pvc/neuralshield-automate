@@ -1,5 +1,6 @@
 """No-network contract tests for authenticated Whop membership retrieval."""
 import json
+import math
 from unittest.mock import patch
 
 import pytest
@@ -94,7 +95,7 @@ def test_rejects_unsafe_bearer_tokens_before_network(token):
         fetch.assert_not_called()
 
 
-@pytest.mark.parametrize("timeout", [0, -1, 31, True, "5"])
+@pytest.mark.parametrize("timeout", [0, -1, 31, True, "5", math.nan, math.inf, -math.inf])
 def test_rejects_invalid_timeout_configuration(timeout):
     with pytest.raises(ValueError):
         WhopMembershipReader("test-secret", timeout_seconds=timeout)
