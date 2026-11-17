@@ -64,7 +64,18 @@ def reconcile_due_whop_saas_subscriptions(
         raise ValueError("Reconciliation cutoff must be timezone aware")
     if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1 or limit > 100:
         raise ValueError("Reconciliation limit must be between 1 and 100")
-    if not isinstance(expected_merchant_id, str) or not expected_merchant_id.startswith("biz_") or not allowed_plans:
+    if (
+        not isinstance(expected_merchant_id, str)
+        or re.fullmatch(r"biz_[A-Za-z0-9_-]{1,128}", expected_merchant_id) is None
+        or not isinstance(allowed_plans, Mapping)
+        or not allowed_plans
+        or any(
+            not isinstance(plan_id, str)
+            or not isinstance(plan, RecurringPlan)
+            or plan_id != plan.checkout_plan_id
+            for plan_id, plan in allowed_plans.items()
+        )
+    ):
         raise ValueError("Whop SaaS provider configuration is not ready")
     # A misbehaving candidate source may return a generator instead of a bounded
     # SQL result. Consume at most limit + 1 entries to avoid unbounded memory use.
