@@ -9,6 +9,7 @@ No entitlement may be granted from this response.
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -62,7 +63,7 @@ class WhopMembershipReader:
         if (not isinstance(token, str) or not token.strip() or token != token.strip()
                 or any(ord(char) < 33 or ord(char) > 126 for char in token)):
             raise ValueError("Whop membership read credential is required")
-        if not isinstance(timeout_seconds, (int, float)) or isinstance(timeout_seconds, bool) or not 0 < timeout_seconds <= 30:
+        if not isinstance(timeout_seconds, (int, float)) or isinstance(timeout_seconds, bool) or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 30:
             raise ValueError("Invalid Whop request timeout")
         self._token = token
         self._timeout = timeout_seconds
