@@ -11,6 +11,7 @@ paid access (the existing 24-hour usage-limit TTL applies independently).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import islice
 import re
 from datetime import datetime, timezone
 from typing import Callable, Mapping, Protocol, Sequence
@@ -65,7 +66,9 @@ def reconcile_due_whop_saas_subscriptions(
         raise ValueError("Reconciliation limit must be between 1 and 100")
     if not isinstance(expected_merchant_id, str) or not expected_merchant_id.startswith("biz_") or not allowed_plans:
         raise ValueError("Whop SaaS provider configuration is not ready")
-    ids = list(candidates.list_due_subscription_ids(before=due_before, limit=limit))
+    # A misbehaving candidate source may return a generator instead of a bounded
+    # SQL result. Consume at most limit + 1 entries to avoid unbounded memory use.
+    ids = list(islice(iter(candidates.list_due_subscription_ids(before=due_before, limit=limit)), limit + 1))
     # Validate before deduplicating: unhashable or malformed IDs must never
     # trigger provider lookups or leak into scheduler logs.
     if len(ids) > limit or any(
