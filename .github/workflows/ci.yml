@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - feature/agency-saas-whop-recurring-guardrails
   pull_request:
     branches:
       - main
