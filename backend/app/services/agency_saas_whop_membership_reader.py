@@ -23,6 +23,11 @@ class _NoRedirects(HTTPRedirectHandler):
         return None
 
 
+def urlopen(request: Request, *, timeout: float):
+    """Fail closed on 3xx; never forward the bearer token to a redirect target."""
+    return build_opener(_NoRedirects()).open(request, timeout=timeout)
+
+
 class WhopMembershipLookupError(RuntimeError):
     """Safe public error; never includes tokens or provider response bodies."""
 
@@ -76,7 +81,7 @@ class WhopMembershipReader:
             method="GET",
         )
         try:
-            with build_opener(_NoRedirects()).open(request, timeout=self._timeout) as response:
+            with urlopen(request, timeout=self._timeout) as response:
                 if response.status != 200:
                     raise WhopMembershipLookupError("Whop membership lookup failed")
                 # Cap provider responses; never ingest unbounded remote JSON.
