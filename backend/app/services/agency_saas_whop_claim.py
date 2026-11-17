@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Mapping, Protocol
+from uuid import UUID
 
 from app.services.agency_saas_whop_guardrails import (
     RecurringPlan, VerifiedSubscriptionFacts, validate_recurring_snapshot,
@@ -42,6 +43,16 @@ class ProviderOwnershipProof:
     authorized_tenant_id: str
     verified_by_provider: bool
     verified_for_session: bool
+
+
+def _valid_saas_uuid(value: object) -> bool:
+    """Require canonical UUIDs before any provider lookup or database write."""
+    if not isinstance(value, str):
+        return False
+    try:
+        return str(UUID(value)) == value
+    except (ValueError, AttributeError, TypeError):
+        return False
 
 
 def _valid_binding_identity(value: object) -> bool:
@@ -92,14 +103,14 @@ def bind_verified_saas_subscription(
     if (
         principal.account_active is not True or principal.email_verified is not True
         or principal.tenant_authorized is not True
-        or not _valid_binding_identity(principal.user_id)
-        or not _valid_binding_identity(principal.tenant_id)
+        or not _valid_saas_uuid(principal.user_id)
+        or not _valid_saas_uuid(principal.tenant_id)
     ):
         raise ValueError("SaaS principal is not authorized to claim a subscription")
     if (
         proof.verified_by_provider is not True or proof.verified_for_session is not True
-        or not _valid_binding_identity(proof.authorized_user_id)
-        or not _valid_binding_identity(proof.authorized_tenant_id)
+        or not _valid_saas_uuid(proof.authorized_user_id)
+        or not _valid_saas_uuid(proof.authorized_tenant_id)
         or proof.authorized_user_id != principal.user_id
         or proof.authorized_tenant_id != principal.tenant_id
         or not _valid_binding_identity(proof.subscription_id)
