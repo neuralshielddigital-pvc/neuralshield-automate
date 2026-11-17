@@ -85,6 +85,10 @@ def bind_verified_saas_subscription(
     Provider ownership authorization must be implemented and independently
     tested before any endpoint is permitted to invoke this function.
     """
+    if not isinstance(principal, AuthenticatedSaasPrincipal):
+        raise ValueError("SaaS principal is not authorized to claim a subscription")
+    if not isinstance(proof, ProviderOwnershipProof):
+        raise ValueError("Missing verified customer-to-session ownership proof")
     if (
         principal.account_active is not True or principal.email_verified is not True
         or principal.tenant_authorized is not True
