@@ -13,7 +13,14 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+
+class _NoRedirects(HTTPRedirectHandler):
+    """Never forward a server-side Whop bearer token across HTTP redirects."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
 
 
 class WhopMembershipLookupError(RuntimeError):
@@ -69,7 +76,7 @@ class WhopMembershipReader:
             method="GET",
         )
         try:
-            with urlopen(request, timeout=self._timeout) as response:
+            with build_opener(_NoRedirects()).open(request, timeout=self._timeout) as response:
                 if response.status != 200:
                     raise WhopMembershipLookupError("Whop membership lookup failed")
                 # Cap provider responses; never ingest unbounded remote JSON.
