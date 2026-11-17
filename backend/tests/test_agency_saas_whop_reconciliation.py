@@ -526,3 +526,52 @@ def test_reconciliation_rejects_malformed_provider_snapshot_without_grant(setup,
     assert result.failed == 1 and result.updated == 0
     assert result.failed_subscription_ids == ("sub_malformed",)
     assert repo.get_decision("sub_malformed") is None
+
+
+@pytest.mark.parametrize("invalid_plans", [
+    None,
+    [],
+    "plan_monthly_starter",
+    {"plan_monthly_starter": None},
+    {"plan_monthly_starter": {"tier": "starter"}},
+    {"wrong_plan": PLAN},
+    {None: PLAN},
+])
+def test_reconciliation_rejects_invalid_plan_configuration_before_candidate_query(setup, invalid_plans):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+
+    class NeverCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            raise AssertionError("invalid config reached candidate query")
+
+    with pytest.raises(ValueError, match="configuration"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=NeverCandidates(),
+            expected_merchant_id="biz_synthetic", allowed_plans=invalid_plans,
+            due_before=NOW,
+        )
+    assert provider.lookups == []
+    assert repo.get_decision("sub_a") is None
+
+
+@pytest.mark.parametrize("invalid_merchant", [
+    "biz_", "biz_merchant extra", "biz_merchant\\n", "biz_" + "x" * 129,
+])
+def test_reconciliation_rejects_malformed_merchant_before_candidate_query(setup, invalid_merchant):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class NeverCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            raise AssertionError("invalid config reached candidate query")
+
+    with pytest.raises(ValueError, match="configuration"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=FakeProvider(), repository=repo, candidates=NeverCandidates(),
+            expected_merchant_id=invalid_merchant,
+            allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+        )
