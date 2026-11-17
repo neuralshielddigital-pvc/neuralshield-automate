@@ -122,3 +122,31 @@ def test_duplicate_provider_json_keys_fail_closed(raw_response):
     with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(raw_response)):
         with pytest.raises(WhopMembershipLookupError):
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+
+
+def test_membership_transport_disables_redirects_to_protect_bearer_token():
+    from urllib.request import Request
+    from app.services.agency_saas_whop_membership_reader import _NoRedirects, urlopen
+
+    handler = _NoRedirects()
+    request = Request(
+        "https://api.whop.com/api/v1/memberships/mem_123ABC",
+        headers={"Authorization": "Bearer secret"},
+    )
+    assert handler.redirect_request(
+        request, None, 302, "Found", {}, "https://attacker.example/collect"
+    ) is None
+
+    class FakeOpener:
+        def open(self, req, *, timeout):
+            assert req is request
+            assert timeout == 3
+            return Response(payload())
+
+    with patch(
+        "app.services.agency_saas_whop_membership_reader.build_opener",
+        return_value=FakeOpener(),
+    ) as factory:
+        with urlopen(request, timeout=3) as response:
+            assert response.status == 200
+        assert isinstance(factory.call_args.args[0], _NoRedirects)
