@@ -414,3 +414,46 @@ def test_strict_reconciliation_succeeds_when_every_record_verified(setup):
         due_before=NOW, raise_on_failure=True,
     )
     assert report.failed == 0 and report.updated == 1
+
+
+@pytest.mark.parametrize("bad_limit", [True, False, 0, 101, 1.5, "10", None])
+def test_reconciliation_rejects_noninteger_or_out_of_range_limit_before_lookup(setup, bad_limit):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    with pytest.raises(ValueError, match="limit"):
+        run(repo, provider, limit=bad_limit)
+    assert provider.lookups == []
+
+
+@pytest.mark.parametrize("bad_cutoff", [None, "2026-11-17", 42, datetime(2026, 11, 17)])
+def test_reconciliation_rejects_invalid_cutoff_before_lookup(setup, bad_cutoff):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    with pytest.raises(ValueError, match="timezone aware"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=repo,
+            expected_merchant_id="biz_synthetic",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=bad_cutoff,
+        )
+    assert provider.lookups == []
+
+
+@pytest.mark.parametrize("bad_merchant", [None, 123, "", "other_merchant"])
+def test_reconciliation_rejects_invalid_merchant_configuration_before_lookup(setup, bad_merchant):
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    with pytest.raises(ValueError, match="configuration"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=repo,
+            expected_merchant_id=bad_merchant,
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW,
+        )
+    assert provider.lookups == []
