@@ -457,3 +457,53 @@ def test_reconciliation_rejects_invalid_merchant_configuration_before_lookup(set
             due_before=NOW,
         )
     assert provider.lookups == []
+
+
+
+def test_reconciliation_caps_unbounded_candidate_iterator_before_lookup(setup):
+    """A buggy scheduler source must not exhaust an unbounded generator."""
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+    provider = FakeProvider()
+    yielded = []
+
+    class UnboundedCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            def generate():
+                for index in range(1000000):
+                    yielded.append(index)
+                    if index > limit:
+                        raise AssertionError("candidate iterator over-consumed")
+                    yield "sub_" + str(index)
+            return generate()
+
+    with pytest.raises(ValueError, match="Invalid or unbounded"):
+        reconcile_due_whop_saas_subscriptions(
+            provider=provider, repository=repo, candidates=UnboundedCandidates(),
+            expected_merchant_id="biz_synthetic",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW, limit=2,
+        )
+    assert yielded == [0, 1, 2]
+    assert provider.lookups == []
+    assert repo.get_decision("sub_a") is None
+
+
+def test_reconciliation_accepts_bounded_candidate_generator(setup):
+    """A well-behaved lazy SQL candidate source remains supported."""
+    db, user = setup
+    bind(db, user, "a")
+    repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class LazyCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            yield "sub_a"
+
+    report = reconcile_due_whop_saas_subscriptions(
+        provider=FakeProvider(), repository=repo, candidates=LazyCandidates(),
+        expected_merchant_id="biz_synthetic",
+        allowed_plans={PLAN.checkout_plan_id: PLAN},
+        due_before=NOW, limit=2,
+    )
+    assert report.examined == 1 and report.updated == 1 and report.failed == 0
