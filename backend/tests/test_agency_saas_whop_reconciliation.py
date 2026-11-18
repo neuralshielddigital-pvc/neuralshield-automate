@@ -575,3 +575,37 @@ def test_reconciliation_rejects_malformed_merchant_before_candidate_query(setup,
             expected_merchant_id=invalid_merchant,
             allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
         )
+
+
+@pytest.mark.parametrize("field,bad_value", [
+    ("tenant_id", None),
+    ("tenant_id", 123),
+    ("user_id", []),
+    ("provider_customer_id", 42),
+])
+def test_reconciliation_fails_closed_on_malformed_binding_identity(setup, field, bad_value):
+    """Corrupted repository identities must never reach the provider or grant access."""
+    from dataclasses import replace
+
+    db, user = setup
+    bind(db, user, "malformed")
+    real_repo = SQLAlchemyWhopSaasBindingRepository(db)
+
+    class CorruptRepository:
+        def get_binding(self, subscription_id):
+            return replace(real_repo.get_binding(subscription_id), **{field: bad_value})
+
+    class DueCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            return ["sub_malformed"]
+
+    provider = FakeProvider()
+    result = reconcile_due_whop_saas_subscriptions(
+        provider=provider, repository=CorruptRepository(), candidates=DueCandidates(),
+        expected_merchant_id="biz_synthetic",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert result.failed_subscription_ids == ("sub_malformed",)
+    assert result.updated == 0
+    assert provider.lookups == []
+    assert real_repo.get_decision("sub_malformed") is None
