@@ -163,3 +163,32 @@ def test_replayed_older_event_cannot_restore_access():
     with pytest.raises(ValueError):
         run(repo=repo, provider=provider)
     assert len(repo.writes) == 1
+
+
+@pytest.mark.parametrize("malformed", [
+    None,
+    {"event_id": "evt_test", "event_type": "payment.succeeded", "subscription_id": "sub_test"},
+    AuthenticatedWebhookReference(None, "payment.succeeded", "sub_test"),
+    AuthenticatedWebhookReference("evt_test", None, "sub_test"),
+    AuthenticatedWebhookReference("evt_test", "payment.succeeded", None),
+    AuthenticatedWebhookReference("evt_test\\n", "payment.succeeded", "sub_test"),
+    AuthenticatedWebhookReference("evt_test", "payment.succeeded", "sub_test "),
+    AuthenticatedWebhookReference("x" * 129, "payment.succeeded", "sub_test"),
+])
+def test_malformed_event_reference_fails_before_provider_or_repository(malformed):
+    provider = FakeProvider(snapshot())
+    repo = FakeRepo()
+    with pytest.raises(ValueError):
+        run(provider=provider, repo=repo, evt=malformed if malformed is not None else 42)
+    assert provider.lookups == 0
+    assert not repo.writes
+
+
+@pytest.mark.parametrize("unverified", [1, "true", None, False])
+def test_non_boolean_signature_proof_fails_closed(unverified):
+    provider = FakeProvider(snapshot())
+    repo = FakeRepo()
+    with pytest.raises(ValueError, match="signature"):
+        run(provider=provider, repo=repo, signature_verified=unverified)
+    assert provider.lookups == 0
+    assert not repo.writes
