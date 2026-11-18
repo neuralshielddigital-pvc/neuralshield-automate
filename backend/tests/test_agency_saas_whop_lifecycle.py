@@ -111,12 +111,20 @@ def test_provider_status_not_in_webhook_controls_access():
     assert not result.decision.can_access
 
 
-@pytest.mark.parametrize("bad_event", ["wrong.type", "", "product.updated"])
+@pytest.mark.parametrize("bad_event", ["wrong.type", "product.updated"])
 def test_unknown_event_has_no_side_effects(bad_event):
     provider = FakeProvider(snapshot())
     repo = FakeRepo()
     result = run(provider=provider, repo=repo, evt=event(bad_event))
     assert not result.handled
+    assert provider.lookups == 0 and not repo.writes
+
+
+def test_empty_event_type_is_rejected_before_side_effects():
+    provider = FakeProvider(snapshot())
+    repo = FakeRepo()
+    with pytest.raises(ValueError, match="identity"):
+        run(provider=provider, repo=repo, evt=event(""))
     assert provider.lookups == 0 and not repo.writes
 
 
@@ -171,7 +179,7 @@ def test_replayed_older_event_cannot_restore_access():
     AuthenticatedWebhookReference(None, "payment.succeeded", "sub_test"),
     AuthenticatedWebhookReference("evt_test", None, "sub_test"),
     AuthenticatedWebhookReference("evt_test", "payment.succeeded", None),
-    AuthenticatedWebhookReference("evt_test\\n", "payment.succeeded", "sub_test"),
+    AuthenticatedWebhookReference("evt_test\n", "payment.succeeded", "sub_test"),
     AuthenticatedWebhookReference("evt_test", "payment.succeeded", "sub_test "),
     AuthenticatedWebhookReference("x" * 129, "payment.succeeded", "sub_test"),
 ])
