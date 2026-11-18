@@ -100,10 +100,19 @@ def process_verified_subscription_event(
     unknown event types, missing bindings and bad signatures fail closed.
     The caller should use provider retries for temporary external failures.
     """
-    if not signature_verified:
+    if signature_verified is not True:
         raise ValueError("Webhook signature was not verified")
-    if not event.event_id.strip() or not event.subscription_id.strip():
-        raise ValueError("Missing event/subscription identity")
+    if not isinstance(event, AuthenticatedWebhookReference):
+        raise ValueError("Invalid authenticated webhook reference")
+    if any(
+        not isinstance(value, str)
+        or not value
+        or len(value) > 128
+        or value != value.strip()
+        or any(ord(char) < 33 or ord(char) > 126 for char in value)
+        for value in (event.event_id, event.event_type, event.subscription_id)
+    ):
+        raise ValueError("Invalid event/subscription identity")
     if event.event_type not in ALLOWED_EVENTS:
         return ProcessingResult(handled=False, changed=False, decision=None)
     binding = repository.get_binding(event.subscription_id)
