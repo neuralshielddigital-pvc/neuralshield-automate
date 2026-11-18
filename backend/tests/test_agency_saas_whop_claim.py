@@ -295,3 +295,17 @@ def test_claim_rejects_noncanonical_proof_uuid_before_provider_lookup(claim_env,
         claim(db, principal, replace(proof, **{field: bad_value}), provider)
     assert provider.lookups == []
     assert db.query(WhopSaasSubscriptionBinding).count() == 0
+
+
+@pytest.mark.parametrize("invalid_result", [None, 0, 1, "true", {}, object()])
+def test_claim_rejects_malformed_repository_write_result(claim_env, invalid_result):
+    db, principal, proof, provider = claim_env
+
+    class MalformedWriter:
+        def create_binding_if_absent(self, binding):
+            return invalid_result
+
+    with pytest.raises(ValueError, match="repository returned an invalid result"):
+        claim(db, principal, proof, provider, repository=MalformedWriter())
+    assert provider.lookups == [proof.subscription_id]
+    assert db.query(WhopSaasSubscriptionBinding).count() == 0
