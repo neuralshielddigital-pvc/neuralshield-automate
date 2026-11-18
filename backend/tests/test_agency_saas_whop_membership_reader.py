@@ -190,3 +190,41 @@ def test_excessively_nested_provider_json_fails_closed_without_leaking_body():
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
     assert error.value.__cause__ is None
     assert "0" not in str(error.value)
+
+
+@pytest.mark.parametrize("status", [201, 204, 301, 302, 307, 308, 401, 403, 404, 429, 500, 503])
+def test_non_success_provider_status_never_returns_membership(status):
+    class NonSuccessResponse(Response):
+        def __init__(self):
+            super().__init__(payload())
+            self.status = status
+
+        def read(self, limit):
+            pytest.fail("non-200 provider responses must not be parsed")
+
+    with patch(
+        "app.services.agency_saas_whop_membership_reader.urlopen",
+        return_value=NonSuccessResponse(),
+    ):
+        with pytest.raises(WhopMembershipLookupError):
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+
+
+def test_transport_error_does_not_expose_provider_body_or_token():
+    from urllib.error import HTTPError
+    from io import BytesIO
+
+    provider_error = HTTPError(
+        "https://api.whop.com/api/v1/memberships/mem_123ABC",
+        401, "secret-provider-response", {}, BytesIO(b"private-buyer-details"),
+    )
+    with patch(
+        "app.services.agency_saas_whop_membership_reader.urlopen",
+        side_effect=provider_error,
+    ):
+        with pytest.raises(WhopMembershipLookupError) as error:
+            WhopMembershipReader("secret-token").retrieve("mem_123ABC")
+    assert error.value.__cause__ is None
+    assert "secret-provider-response" not in str(error.value)
+    assert "private-buyer-details" not in str(error.value)
+    assert "secret-token" not in str(error.value)
