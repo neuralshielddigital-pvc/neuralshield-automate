@@ -176,3 +176,17 @@ def test_interrupted_provider_response_never_leaks_partial_payload():
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
     assert "secret-provider-body" not in str(error.value)
     assert error.value.__cause__ is None
+
+
+def test_excessively_nested_provider_json_fails_closed_without_leaking_body():
+    # json.loads can raise RecursionError before it constructs a response object.
+    # Remote provider data must never escape as an unhandled server error.
+    nested = b"[" * 1500 + b"0" + b"]" * 1500
+    with patch(
+        "app.services.agency_saas_whop_membership_reader.urlopen",
+        return_value=Response(nested),
+    ):
+        with pytest.raises(WhopMembershipLookupError) as error:
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+    assert error.value.__cause__ is None
+    assert "0" not in str(error.value)
