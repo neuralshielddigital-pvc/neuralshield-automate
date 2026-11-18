@@ -159,3 +159,20 @@ def test_nonfinite_provider_json_constants_fail_closed(constant):
     with patch("app.services.agency_saas_whop_membership_reader.urlopen", return_value=Response(raw.encode())):
         with pytest.raises(WhopMembershipLookupError):
             WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+
+
+def test_interrupted_provider_response_never_leaks_partial_payload():
+    from http.client import IncompleteRead
+
+    class InterruptedResponse(Response):
+        def read(self, limit):
+            raise IncompleteRead(b"secret-provider-body", 10)
+
+    with patch(
+        "app.services.agency_saas_whop_membership_reader.urlopen",
+        return_value=InterruptedResponse(b""),
+    ):
+        with pytest.raises(WhopMembershipLookupError) as error:
+            WhopMembershipReader("test-secret").retrieve("mem_123ABC")
+    assert "secret-provider-body" not in str(error.value)
+    assert error.value.__cause__ is None
