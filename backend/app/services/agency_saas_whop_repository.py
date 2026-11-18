@@ -108,7 +108,7 @@ class SQLAlchemyWhopSaasBindingRepository:
         No external requests or grants happen in this method.
         """
         from sqlalchemy import or_
-        if limit < 1 or limit > 100:
+        if type(limit) is not int or limit < 1 or limit > 100:
             raise ValueError("Reconciliation candidate limit must be 1..100")
         if before.tzinfo is None or before.utcoffset() is None:
             raise ValueError("Cutoff must have a timezone")
