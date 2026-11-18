@@ -245,3 +245,10 @@ def test_concurrent_claim_collision_releases_followup_read_transaction(
         assert repository.create_binding_if_absent(binding) is False
     assert lookups == 2
     assert not bound_db.in_transaction()
+
+
+@pytest.mark.parametrize("invalid_limit", [True, False, 1.0, "1", None, 0, 101])
+def test_reconciliation_rejects_invalid_batch_limit_before_query(bound_db, invalid_limit):
+    repository = SQLAlchemyWhopSaasBindingRepository(bound_db)
+    with pytest.raises(ValueError, match="candidate limit"):
+        repository.list_due_subscription_ids(before=STAMP, limit=invalid_limit)
