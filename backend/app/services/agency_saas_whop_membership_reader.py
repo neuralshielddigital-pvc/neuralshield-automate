@@ -119,5 +119,5 @@ class WhopMembershipReader:
             if observed.tzinfo is None or observed.utcoffset() is None:
                 raise ValueError("Unaware membership timestamp")
             return WhopMembership(membership_id, user_id, variant_id, status, observed)
-        except (HTTPError, URLError, HTTPException, TimeoutError, OSError, ValueError, TypeError, UnicodeError, OverflowError, json.JSONDecodeError):
+        except (HTTPError, URLError, HTTPException, TimeoutError, OSError, ValueError, TypeError, UnicodeError, OverflowError, RecursionError, json.JSONDecodeError):
             raise WhopMembershipLookupError("Whop membership lookup or contract validation failed") from None
