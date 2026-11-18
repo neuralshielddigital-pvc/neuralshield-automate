@@ -142,4 +142,8 @@ def bind_verified_saas_subscription(
         user_id=principal.user_id,
     )
     newly_bound = repository.create_binding_if_absent(binding)
+    if type(newly_bound) is not bool:
+        # A malformed repository response must not be interpreted as a successful
+        # ownership claim (e.g. truthy row counts, ORM objects or None).
+        raise ValueError("Subscription binding repository returned an invalid result")
     return ClaimResult(newly_bound=newly_bound, subscription_id=proof.subscription_id)
