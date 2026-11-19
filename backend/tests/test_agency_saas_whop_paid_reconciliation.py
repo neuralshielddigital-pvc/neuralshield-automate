@@ -224,3 +224,26 @@ def test_incomplete_ownership_binding_never_fetches_payment(missing_field, inval
     assert report.failed == 1 and report.updated == 0
     assert repository.writes == []
     payment_provider.retrieve_verified_first_charge.assert_not_called()
+
+
+def test_duplicate_candidate_lookup_does_not_switch_verified_snapshot():
+    """An adapter must not substitute a second provider snapshot after charge check."""
+    class DoubleLookupCandidates:
+        def list_due_subscription_ids(self, *, before, limit):
+            return ["sub_test"]
+
+    provider = Mock()
+    provider.retrieve_verified_subscription.side_effect = [
+        snapshot("active"), snapshot("canceled")
+    ]
+    payment = Mock()
+    payment.retrieve_verified_first_charge.return_value = charge()
+    repo = Repo()
+    report = reconcile_due_paid_whop_saas_subscriptions(
+        payment_provider=payment, provider=provider, repository=repo,
+        candidates=DoubleLookupCandidates(), expected_merchant_id="biz_test",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert report.updated == 1
+    assert repo.writes[0].can_access is True
+    provider.retrieve_verified_subscription.assert_called_once_with("sub_test")
