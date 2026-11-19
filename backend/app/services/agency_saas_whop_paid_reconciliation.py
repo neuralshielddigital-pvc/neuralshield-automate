@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.services.agency_saas_whop_first_charge import VerifiedFirstCharge
+from app.services.agency_saas_whop_guardrails import validate_recurring_snapshot
 from app.services.agency_saas_whop_paid_decision import validate_paid_recurring_snapshot
 from app.services.agency_saas_whop_reconciliation import (
     ReconciliationReport, reconcile_due_whop_saas_subscriptions,
@@ -48,10 +49,22 @@ def reconcile_due_paid_whop_saas_subscriptions(
             from app.services.agency_saas_whop_guardrails import VerifiedSubscriptionFacts
             if not isinstance(snapshot, VerifiedSubscriptionFacts):
                 return snapshot
-            if snapshot.provider_status.lower() == "active":
+            if isinstance(snapshot.provider_status, str) and snapshot.provider_status.lower() == "active":
                 binding = kwargs["repository"].get_binding(subscription_id)
                 if binding is None or binding.subscription_id != subscription_id:
                     raise ValueError("Missing authorized subscription binding")
+                # Reject invalid subscription identity, ownership, plan and price
+                # before fetching any payment record.
+                preliminary = validate_recurring_snapshot(
+                    snapshot=snapshot,
+                    independently_verified=True,
+                    expected_merchant_id=kwargs["expected_merchant_id"],
+                    allowed_plans=kwargs["allowed_plans"],
+                    bound_customer_id=binding.provider_customer_id,
+                    previous=kwargs["repository"].get_decision(subscription_id),
+                )
+                if not preliminary.can_access:
+                    return snapshot
                 charge = payment_provider.retrieve_verified_first_charge(subscription_id)
                 validate_paid_recurring_snapshot(
                     snapshot=snapshot,
