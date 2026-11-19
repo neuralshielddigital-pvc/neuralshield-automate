@@ -51,7 +51,11 @@ def reconcile_due_paid_whop_saas_subscriptions(
                 return snapshot
             if isinstance(snapshot.provider_status, str) and snapshot.provider_status.lower() == "active":
                 binding = kwargs["repository"].get_binding(subscription_id)
-                if binding is None or binding.subscription_id != subscription_id:
+                if (binding is None or binding.subscription_id != subscription_id
+                        or not isinstance(binding.tenant_id, str) or not binding.tenant_id.strip()
+                        or not isinstance(binding.user_id, str) or not binding.user_id.strip()
+                        or not isinstance(binding.provider_customer_id, str)
+                        or not binding.provider_customer_id.strip()):
                     raise ValueError("Missing authorized subscription binding")
                 # Reject invalid subscription identity, ownership, plan and price
                 # before fetching any payment record.
