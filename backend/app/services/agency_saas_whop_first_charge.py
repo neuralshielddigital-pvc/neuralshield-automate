@@ -34,8 +34,16 @@ def validate_first_charge(
     Must be combined with current subscription validation and persisted tenant
     ownership; it is not by itself sufficient to activate an entitlement.
     """
-    if not independently_verified:
+    if independently_verified is not True:
         raise ValueError("First charge not independently verified")
+    if not isinstance(charge, VerifiedFirstCharge):
+        raise ValueError("Invalid first charge evidence")
+    if any(not isinstance(value, str) for value in (
+        charge.payment_id, charge.subscription_id, charge.customer_id,
+        charge.merchant_id, charge.status, charge.currency,
+        subscription_id, customer_id, merchant_id,
+    )):
+        raise ValueError("Invalid first charge identity fields")
     if not charge.payment_id.strip() or not charge.subscription_id.strip():
         raise ValueError("Missing payment or subscription identity")
     if not charge.customer_id.strip() or not charge.merchant_id.strip():
@@ -48,11 +56,13 @@ def validate_first_charge(
         raise ValueError("Payment merchant mismatch")
     if charge.status.lower() not in {"paid", "succeeded"}:
         raise ValueError("First charge has not succeeded")
-    if expected_amount_usd_cents <= 0 or charge.amount_usd_cents != expected_amount_usd_cents:
+    if (not isinstance(expected_amount_usd_cents, int) or isinstance(expected_amount_usd_cents, bool)
+            or not isinstance(charge.amount_usd_cents, int) or isinstance(charge.amount_usd_cents, bool)
+            or expected_amount_usd_cents <= 0 or charge.amount_usd_cents != expected_amount_usd_cents):
         raise ValueError("First charge amount mismatch")
     if charge.currency.upper() != "USD":
         raise ValueError("First charge currency mismatch")
-    if charge.paid_at.tzinfo is None or charge.paid_at.utcoffset() is None:
+    if not isinstance(charge.paid_at, datetime) or charge.paid_at.tzinfo is None or charge.paid_at.utcoffset() is None:
         raise ValueError("First charge timestamp must be timezone-aware")
     if charge.paid_at > datetime.now(timezone.utc):
         raise ValueError("Future first charge timestamp")
