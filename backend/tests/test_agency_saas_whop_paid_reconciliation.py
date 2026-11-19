@@ -200,3 +200,27 @@ def test_invalid_active_subscription_never_queries_payment(field, value):
     assert report.failed == 1 and report.updated == 0
     assert repository.writes == []
     payment.retrieve_verified_first_charge.assert_not_called()
+
+
+@pytest.mark.parametrize("missing_field", ["tenant_id", "user_id", "provider_customer_id"])
+@pytest.mark.parametrize("invalid_value", ["", "  ", None])
+def test_incomplete_ownership_binding_never_fetches_payment(missing_field, invalid_value):
+    class IncompleteRepo(Repo):
+        def get_binding(self, sid):
+            binding = super().get_binding(sid)
+            setattr(binding, missing_field, invalid_value)
+            return binding
+
+    repository = IncompleteRepo()
+    subscription_provider = Mock()
+    subscription_provider.retrieve_verified_subscription.return_value = snapshot("active")
+    payment_provider = Mock()
+    report = reconcile_due_paid_whop_saas_subscriptions(
+        payment_provider=payment_provider, provider=subscription_provider,
+        repository=repository, candidates=Candidates(),
+        expected_merchant_id="biz_test",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert report.failed == 1 and report.updated == 0
+    assert repository.writes == []
+    payment_provider.retrieve_verified_first_charge.assert_not_called()
