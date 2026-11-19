@@ -176,3 +176,27 @@ def test_trialing_never_fetches_payment_or_grants_paid_access():
     assert report.failed == 0 and report.updated == 1
     assert repository.writes[0].can_access is False
     payment_provider.retrieve_verified_first_charge.assert_not_called()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("customer_id", "cus_wrong"),
+    ("merchant_id", "biz_wrong"),
+    ("checkout_plan_id", "plan_wrong"),
+    ("amount_usd_cents", 5900),
+])
+def test_invalid_active_subscription_never_queries_payment(field, value):
+    from dataclasses import replace
+
+    payment = Mock()
+    repository = Repo()
+    provider = Mock()
+    provider.retrieve_verified_subscription.return_value = replace(snapshot("active"), **{field: value})
+    report = reconcile_due_paid_whop_saas_subscriptions(
+        payment_provider=payment, provider=provider,
+        repository=repository, candidates=Candidates(),
+        expected_merchant_id="biz_test",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert report.failed == 1 and report.updated == 0
+    assert repository.writes == []
+    payment.retrieve_verified_first_charge.assert_not_called()
