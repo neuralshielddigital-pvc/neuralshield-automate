@@ -148,3 +148,31 @@ def test_payment_outage_alert_delivery_failure_is_not_silenced():
             allowed_plans={PLAN.checkout_plan_id: PLAN},
             due_before=NOW, alert_on_failure=alerts, raise_on_failure=True,
         )
+
+
+def test_unbound_subscription_never_fetches_payment_or_grants_access():
+    class UnboundRepo(Repo):
+        def get_binding(self, sid):
+            return None
+
+    repository = UnboundRepo()
+    subscription_provider = Mock()
+    subscription_provider.retrieve_verified_subscription.return_value = snapshot("active")
+    payment_provider = Mock()
+    report = reconcile_due_paid_whop_saas_subscriptions(
+        payment_provider=payment_provider, provider=subscription_provider,
+        repository=repository, candidates=Candidates(),
+        expected_merchant_id="biz_test",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert report.failed == 1 and report.updated == 0
+    assert repository.writes == []
+    payment_provider.retrieve_verified_first_charge.assert_not_called()
+
+
+def test_trialing_never_fetches_payment_or_grants_paid_access():
+    payment_provider = Mock()
+    report, repository, _ = run(status="trialing", payment_provider=payment_provider)
+    assert report.failed == 0 and report.updated == 1
+    assert repository.writes[0].can_access is False
+    payment_provider.retrieve_verified_first_charge.assert_not_called()
