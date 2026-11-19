@@ -111,3 +111,40 @@ def test_payment_outage_does_not_refresh_active_access():
     payment.retrieve_verified_first_charge.side_effect = RuntimeError("outage")
     report, repo, _ = run(payment_provider=payment)
     assert report.failed == 1 and repo.writes == []
+
+
+def test_payment_outage_alerts_and_fails_scheduled_job():
+    payment = Mock()
+    payment.retrieve_verified_first_charge.side_effect = RuntimeError("provider unavailable")
+    alerts = Mock()
+    repository = Repo()
+    provider = Mock()
+    provider.retrieve_verified_subscription.return_value = snapshot("active")
+    with pytest.raises(RuntimeError, match="failed for 1 subscriptions"):
+        reconcile_due_paid_whop_saas_subscriptions(
+            payment_provider=payment, provider=provider,
+            repository=repository, candidates=Candidates(),
+            expected_merchant_id="biz_test",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW, alert_on_failure=alerts, raise_on_failure=True,
+        )
+    assert repository.writes == []
+    alerts.assert_called_once_with(
+        failed_subscription_ids=("sub_test",), examined=1,
+    )
+
+
+def test_payment_outage_alert_delivery_failure_is_not_silenced():
+    payment = Mock()
+    payment.retrieve_verified_first_charge.side_effect = RuntimeError("provider unavailable")
+    alerts = Mock(side_effect=RuntimeError("alert transport unavailable"))
+    with pytest.raises(RuntimeError, match="alert transport unavailable"):
+        reconcile_due_paid_whop_saas_subscriptions(
+            payment_provider=payment, provider=Mock(
+                retrieve_verified_subscription=Mock(return_value=snapshot("active"))
+            ),
+            repository=Repo(), candidates=Candidates(),
+            expected_merchant_id="biz_test",
+            allowed_plans={PLAN.checkout_plan_id: PLAN},
+            due_before=NOW, alert_on_failure=alerts, raise_on_failure=True,
+        )
