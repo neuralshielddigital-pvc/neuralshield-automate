@@ -43,7 +43,14 @@ def reconcile_due_paid_whop_saas_subscriptions(
     # failures. This adapter checks the first charge before the active
     # snapshot can reach that implementation's entitlement write.
     class PaymentGuardedProvider:
+        def __init__(self):
+            self.verified_snapshots = {}
+
         def retrieve_verified_subscription(self, subscription_id):
+            # The lifecycle must write the exact subscription facts whose
+            # payment was checked, not a second provider response.
+            if subscription_id in self.verified_snapshots:
+                return self.verified_snapshots[subscription_id]
             snapshot = provider.retrieve_verified_subscription(subscription_id)
             # Let legacy reconciliation reject malformed snapshots safely.
             from app.services.agency_saas_whop_guardrails import VerifiedSubscriptionFacts
@@ -80,6 +87,7 @@ def reconcile_due_paid_whop_saas_subscriptions(
                     bound_customer_id=binding.provider_customer_id,
                     previous=kwargs["repository"].get_decision(subscription_id),
                 )
+            self.verified_snapshots[subscription_id] = snapshot
             return snapshot
 
     return reconcile_due_whop_saas_subscriptions(
