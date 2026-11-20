@@ -29,3 +29,28 @@ def test_missing_authenticated_subscription_lookup_is_rejected_before_any_work(s
             payment_provider=payment_provider, provider=subscription_provider
         )
     payment_provider.retrieve_verified_first_charge.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "repository,candidates,expected_error",
+    [
+        (None, Mock(), "repository"),
+        (object(), Mock(), "repository"),
+        (Mock(get_binding=None), Mock(), "repository"),
+        (Mock(), None, "candidate source"),
+        (Mock(), object(), "candidate source"),
+        (Mock(), Mock(list_due_subscription_ids=None), "candidate source"),
+    ],
+)
+def test_missing_persistence_dependencies_fail_before_provider_calls(repository, candidates, expected_error):
+    subscription_provider = Mock()
+    payment_provider = Mock()
+    with pytest.raises(ValueError, match=expected_error):
+        reconcile_due_paid_whop_saas_subscriptions(
+            payment_provider=payment_provider,
+            provider=subscription_provider,
+            repository=repository,
+            candidates=candidates,
+        )
+    subscription_provider.retrieve_verified_subscription.assert_not_called()
+    payment_provider.retrieve_verified_first_charge.assert_not_called()
