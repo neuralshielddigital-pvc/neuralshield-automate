@@ -39,6 +39,18 @@ def reconcile_due_paid_whop_saas_subscriptions(
     ):
         raise ValueError("Verified Whop subscription provider is required")
 
+    repository = kwargs.get("repository")
+    candidates = kwargs.get("candidates")
+    if repository is None or not all(
+        callable(getattr(repository, method, None))
+        for method in ("get_binding", "get_decision", "apply_if_current")
+    ):
+        raise ValueError("Bound SaaS subscription repository is required")
+    if candidates is None or not callable(
+        getattr(candidates, "list_due_subscription_ids", None)
+    ):
+        raise ValueError("Bounded reconciliation candidate source is required")
+
     # Existing reconciliation performs binding checks and handles individual
     # failures. This adapter checks the first charge before the active
     # snapshot can reach that implementation's entitlement write.
