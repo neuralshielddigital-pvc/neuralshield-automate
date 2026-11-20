@@ -7,6 +7,7 @@ No public checkout or production feature flag is enabled here.
 from __future__ import annotations
 
 from datetime import datetime
+import re
 from typing import Mapping
 
 
@@ -52,9 +53,18 @@ def run_monitored_paid_reconciliation(
                 # Materialize here: generators may fail while being consumed by
                 # the reconciliation loop rather than at method invocation.
                 from itertools import islice
-                return list(islice(iter(candidates.list_due_subscription_ids(
+                ids = list(islice(iter(candidates.list_due_subscription_ids(
                     before=before, limit=limit
                 )), limit + 1))
+                # Invalid or over-limit batches must page the supervisor too;
+                # the underlying reconciler rejects these before its alert path.
+                if (len(ids) > limit or any(
+                    not isinstance(sid, str)
+                    or re.fullmatch(r"[A-Za-z0-9_-]{1,128}", sid) is None
+                    for sid in ids
+                ) or len(set(ids)) != len(ids)):
+                    raise ValueError("Invalid reconciliation candidate batch")
+                return ids
             except Exception as exc:
                 # A database outage before a candidate is enumerated must
                 # still page monitoring; never leak SQL or credentials.
