@@ -91,3 +91,16 @@ def test_invalid_candidate_batch_alerts_and_prevents_provider_access(candidate_i
     args["provider"].retrieve_verified_subscription.assert_not_called()
     args["payment_provider"].retrieve_verified_first_charge.assert_not_called()
     args["repository"].apply_if_current.assert_not_called()
+
+
+@pytest.mark.parametrize("limit", [0, -1, True, False, 1.5, "100", None, 1001])
+def test_invalid_scheduler_limit_alerts_before_candidate_or_provider_access(limit):
+    args = arguments()
+    alert = Mock()
+    with pytest.raises(ValueError, match="batch limit"):
+        run_monitored_paid_reconciliation(**args, alert_on_failure=alert, limit=limit)
+    alert.assert_called_once_with(failed_subscription_ids=(), examined=0)
+    args["candidates"].list_due_subscription_ids.assert_not_called()
+    args["provider"].retrieve_verified_subscription.assert_not_called()
+    args["payment_provider"].retrieve_verified_first_charge.assert_not_called()
+    args["repository"].apply_if_current.assert_not_called()
