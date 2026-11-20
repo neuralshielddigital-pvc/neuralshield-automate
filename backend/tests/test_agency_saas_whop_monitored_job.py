@@ -73,3 +73,21 @@ def test_candidate_source_outage_alerts_and_fails_closed(failure_mode):
     args["provider"].retrieve_verified_subscription.assert_not_called()
     args["payment_provider"].retrieve_verified_first_charge.assert_not_called()
     args["repository"].apply_if_current.assert_not_called()
+
+
+@pytest.mark.parametrize("candidate_ids", [
+    ["sub_test", "sub_test"],
+    ["sub_test", "invalid subscription"],
+    [None],
+    ["sub_test"] * 101,
+])
+def test_invalid_candidate_batch_alerts_and_prevents_provider_access(candidate_ids):
+    args = arguments()
+    args["candidates"].list_due_subscription_ids.return_value = candidate_ids
+    alert = Mock()
+    with pytest.raises(RuntimeError, match="candidate enumeration failed"):
+        run_monitored_paid_reconciliation(**args, alert_on_failure=alert)
+    alert.assert_called_once_with(failed_subscription_ids=(), examined=0)
+    args["provider"].retrieve_verified_subscription.assert_not_called()
+    args["payment_provider"].retrieve_verified_first_charge.assert_not_called()
+    args["repository"].apply_if_current.assert_not_called()
