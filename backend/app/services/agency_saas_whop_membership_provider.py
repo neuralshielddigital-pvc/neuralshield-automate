@@ -72,7 +72,10 @@ class WhopMembershipProvider:
             )
             if response.status_code != 200 or len(response.content) > 262144:
                 raise WhopUnavailable("Membership lookup failed")
-            record = json.loads(\n                response.content, object_pairs_hook=_unique_json_object,\n                parse_constant=_reject_nonfinite,\n            )
+            record = json.loads(
+                response.content, object_pairs_hook=_unique_json_object,
+                parse_constant=_reject_nonfinite,
+            )
         except (requests.RequestException, ValueError) as exc:
             raise WhopUnavailable("Membership lookup failed") from exc
         if not isinstance(record, dict) or record.get("id") != subscription_id:
