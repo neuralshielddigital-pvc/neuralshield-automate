@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.services.agency_saas_whop_first_charge import VerifiedFirstCharge
+from app.services.agency_saas_whop_period_payment import validate_period_payment
 from app.services.agency_saas_whop_guardrails import validate_recurring_snapshot
 from app.services.agency_saas_whop_paid_decision import validate_paid_recurring_snapshot
 from app.services.agency_saas_whop_reconciliation import (
@@ -21,7 +22,8 @@ class VerifiedPaymentProvider(Protocol):
 
 
 def reconcile_due_paid_whop_saas_subscriptions(
-    *, payment_provider: VerifiedPaymentProvider, **kwargs
+    *, payment_provider: VerifiedPaymentProvider, period_payment_provider=None,
+    entitlement_period_provider=None, **kwargs
 ) -> ReconciliationReport:
     """Require independently authenticated payment evidence before access.
 
@@ -33,6 +35,8 @@ def reconcile_due_paid_whop_saas_subscriptions(
         getattr(payment_provider, "retrieve_verified_first_charge", None)
     ):
         raise ValueError("Verified Whop payment provider is required")
+    if (period_payment_provider is None) != (entitlement_period_provider is None):
+        raise ValueError("Period payment and entitlement period providers must be configured together")
     provider = kwargs.get("provider")
     if provider is None or not callable(
         getattr(provider, "retrieve_verified_subscription", None)
@@ -99,6 +103,20 @@ def reconcile_due_paid_whop_saas_subscriptions(
                     bound_customer_id=binding.provider_customer_id,
                     previous=kwargs["repository"].get_decision(subscription_id),
                 )
+                if period_payment_provider is not None:
+                    # Upstream adapters must authenticate both provider records.
+                    period = entitlement_period_provider.retrieve_verified_entitlement_period(subscription_id)
+                    if not isinstance(period, tuple) or len(period) != 2:
+                        raise ValueError("Missing authenticated entitlement period")
+                    evidence = period_payment_provider.retrieve_verified_period_payment(subscription_id)
+                    validate_period_payment(
+                        evidence=evidence, independently_verified=True,
+                        subscription_id=subscription_id,
+                        customer_id=binding.provider_customer_id,
+                        merchant_id=kwargs["expected_merchant_id"],
+                        expected_amount_usd_cents=snapshot.amount_usd_cents,
+                        entitlement_start=period[0], entitlement_end=period[1],
+                    )
             self.verified_snapshots[subscription_id] = snapshot
             return snapshot
 
