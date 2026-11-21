@@ -31,6 +31,8 @@ def run_monitored_paid_reconciliation(
     *,
     provider: WhopSubscriptionProvider,
     payment_provider: VerifiedPaymentProvider,
+    period_payment_provider,
+    entitlement_period_provider,
     repository: BoundSubscriptionRepository,
     candidates: ReconciliationCandidates,
     expected_merchant_id: str,
@@ -81,6 +83,9 @@ def run_monitored_paid_reconciliation(
     return reconcile_due_paid_whop_saas_subscriptions(
         provider=provider,
         payment_provider=payment_provider,
+        period_payment_provider=period_payment_provider,
+        entitlement_period_provider=entitlement_period_provider,
+        require_period_payment=True,
         repository=repository,
         candidates=AlertingCandidates(),
         expected_merchant_id=expected_merchant_id,
