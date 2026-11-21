@@ -50,6 +50,7 @@ def test_uncovered_or_invalid_entitlement_is_rejected(start, end):
     VerifiedPeriodPayment(replace(CHARGE, status="refunded"), START, END),
     VerifiedPeriodPayment(replace(CHARGE, customer_id="other"), START, END),
     VerifiedPeriodPayment(replace(CHARGE, paid_at=END + timedelta(seconds=1)), START, END),
+    VerifiedPeriodPayment(replace(CHARGE, paid_at=START - timedelta(seconds=1)), START, END),
 ])
 def test_invalid_or_unbound_period_evidence_is_rejected(evidence):
     with pytest.raises(ValueError):
