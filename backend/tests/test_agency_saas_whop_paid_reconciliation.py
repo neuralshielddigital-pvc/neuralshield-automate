@@ -247,3 +247,62 @@ def test_duplicate_candidate_lookup_does_not_switch_verified_snapshot():
     assert report.updated == 1
     assert repo.writes[0].can_access is True
     provider.retrieve_verified_subscription.assert_called_once_with("sub_test")
+
+
+def test_period_payment_blocks_reuse_of_first_charge_for_unpaid_renewal():
+    from app.services.agency_saas_whop_period_payment import VerifiedPeriodPayment
+    repo = Repo()
+    provider = Mock()
+    provider.retrieve_verified_subscription.return_value = snapshot()
+    payment = Mock()
+    payment.retrieve_verified_first_charge.return_value = charge()
+    period_payment = Mock()
+    period_payment.retrieve_verified_period_payment.return_value = VerifiedPeriodPayment(
+        charge=charge(), period_start=NOW - timedelta(days=31),
+        period_end=NOW - timedelta(days=1),
+    )
+    periods = Mock()
+    periods.retrieve_verified_entitlement_period.return_value = (
+        NOW - timedelta(days=1), NOW + timedelta(days=29),
+    )
+    report = reconcile_due_paid_whop_saas_subscriptions(
+        payment_provider=payment, period_payment_provider=period_payment,
+        entitlement_period_provider=periods, provider=provider,
+        repository=repo, candidates=Candidates(),
+        expected_merchant_id="biz_test",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert report.failed == 1 and report.updated == 0
+    assert repo.writes == []
+
+
+def test_period_payment_gate_allows_matching_authenticated_period():
+    from app.services.agency_saas_whop_period_payment import VerifiedPeriodPayment
+    repo = Repo()
+    provider = Mock(retrieve_verified_subscription=Mock(return_value=snapshot()))
+    payment = Mock(retrieve_verified_first_charge=Mock(return_value=charge()))
+    period_payment = Mock(retrieve_verified_period_payment=Mock(
+        return_value=VerifiedPeriodPayment(
+            charge=charge(), period_start=NOW - timedelta(days=1),
+            period_end=NOW + timedelta(days=29),
+        )
+    ))
+    periods = Mock(retrieve_verified_entitlement_period=Mock(
+        return_value=(NOW, NOW + timedelta(days=28))
+    ))
+    report = reconcile_due_paid_whop_saas_subscriptions(
+        payment_provider=payment, period_payment_provider=period_payment,
+        entitlement_period_provider=periods, provider=provider,
+        repository=repo, candidates=Candidates(),
+        expected_merchant_id="biz_test",
+        allowed_plans={PLAN.checkout_plan_id: PLAN}, due_before=NOW,
+    )
+    assert report.failed == 0 and report.updated == 1
+    assert repo.writes[0].can_access is True
+
+
+def test_partial_period_provider_configuration_rejected():
+    with pytest.raises(ValueError, match="configured together"):
+        reconcile_due_paid_whop_saas_subscriptions(
+            payment_provider=Mock(), period_payment_provider=Mock(),
+        )
