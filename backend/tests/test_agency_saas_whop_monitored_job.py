@@ -13,6 +13,8 @@ def arguments():
     return dict(
         provider=Mock(),
         payment_provider=Mock(),
+        period_payment_provider=Mock(),
+        entitlement_period_provider=Mock(),
         repository=Mock(),
         candidates=Mock(list_due_subscription_ids=Mock(return_value=[])),
         expected_merchant_id="biz_test",
@@ -104,3 +106,21 @@ def test_invalid_scheduler_limit_alerts_before_candidate_or_provider_access(limi
     args["provider"].retrieve_verified_subscription.assert_not_called()
     args["payment_provider"].retrieve_verified_first_charge.assert_not_called()
     args["repository"].apply_if_current.assert_not_called()
+
+
+@pytest.mark.parametrize("missing", ["period_payment_provider", "entitlement_period_provider"])
+def test_monitored_scheduler_rejects_missing_period_evidence_provider(missing):
+    args = arguments()
+    args[missing] = None
+    with pytest.raises(ValueError, match="period|Period|billing"):
+        run_monitored_paid_reconciliation(**args, alert_on_failure=Mock())
+    args["candidates"].list_due_subscription_ids.assert_not_called()
+    args["repository"].apply_if_current.assert_not_called()
+
+
+def test_monitored_scheduler_rejects_non_callable_period_adapter():
+    args = arguments()
+    args["period_payment_provider"] = object()
+    with pytest.raises(ValueError, match="billing-period payment provider"):
+        run_monitored_paid_reconciliation(**args, alert_on_failure=Mock())
+    args["candidates"].list_due_subscription_ids.assert_not_called()
