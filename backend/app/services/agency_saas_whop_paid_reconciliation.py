@@ -31,6 +31,8 @@ def reconcile_due_paid_whop_saas_subscriptions(
     Non-active decisions still revoke without a payment API lookup. The
     provider adapter must be separately authenticated and verified.
     """
+    if type(require_period_payment) is not bool:
+        raise ValueError("require_period_payment must be an explicit boolean")
     if payment_provider is None or not callable(
         getattr(payment_provider, "retrieve_verified_first_charge", None)
     ):
