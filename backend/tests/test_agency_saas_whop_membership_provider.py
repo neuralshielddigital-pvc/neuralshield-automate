@@ -67,3 +67,16 @@ def test_invalid_id_does_not_call_whop():
 def test_unsafe_money_rejected(value):
     with pytest.raises(ValueError):
         _cents({"amount": value, "currency": "usd"})
+
+
+@pytest.mark.parametrize("raw", [
+    b'{"id":"mem_testMember","id":"mem_other"}',
+    b'{"id":"mem_testMember","account":{"id":"biz_testMerchant","id":"biz_other"}}',
+    b'{"id":"mem_testMember","renewal_price":{"amount":"19.00","amount":"149.00"}}',
+    b'{"id":"mem_testMember","renewal_price":{"amount":NaN}}',
+    b'{"id":"mem_testMember","renewal_price":{"amount":Infinity}}',
+])
+def test_ambiguous_provider_json_never_normalizes(raw):
+    with patch("requests.get", return_value=Mock(status_code=200, content=raw)):
+        with pytest.raises(ValueError):
+            provider().retrieve_verified_subscription(MEMBER)
