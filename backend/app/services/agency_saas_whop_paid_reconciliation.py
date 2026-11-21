@@ -23,7 +23,7 @@ class VerifiedPaymentProvider(Protocol):
 
 def reconcile_due_paid_whop_saas_subscriptions(
     *, payment_provider: VerifiedPaymentProvider, period_payment_provider=None,
-    entitlement_period_provider=None, **kwargs
+    entitlement_period_provider=None, require_period_payment=False, **kwargs
 ) -> ReconciliationReport:
     """Require independently authenticated payment evidence before access.
 
@@ -37,6 +37,16 @@ def reconcile_due_paid_whop_saas_subscriptions(
         raise ValueError("Verified Whop payment provider is required")
     if (period_payment_provider is None) != (entitlement_period_provider is None):
         raise ValueError("Period payment and entitlement period providers must be configured together")
+    if require_period_payment is True and period_payment_provider is None:
+        raise ValueError("Production reconciliation requires verified billing-period payment evidence")
+    if period_payment_provider is not None and not callable(
+        getattr(period_payment_provider, "retrieve_verified_period_payment", None)
+    ):
+        raise ValueError("Verified billing-period payment provider is required")
+    if entitlement_period_provider is not None and not callable(
+        getattr(entitlement_period_provider, "retrieve_verified_entitlement_period", None)
+    ):
+        raise ValueError("Verified entitlement-period provider is required")
     provider = kwargs.get("provider")
     if provider is None or not callable(
         getattr(provider, "retrieve_verified_subscription", None)
