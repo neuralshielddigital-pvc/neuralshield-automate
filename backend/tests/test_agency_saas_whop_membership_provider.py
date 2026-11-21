@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from app.services.agency_saas_whop_membership_provider import WhopMembershipProvider, _cents
+from app.services.agency_whop_provider import WhopUnavailable
 
 
 MERCHANT = "biz_testMerchant"
@@ -52,7 +53,7 @@ def test_authenticated_membership_normalizes_without_entitlement_write():
 ])
 def test_malformed_or_foreign_membership_rejected(changes):
     with patch("requests.get", return_value=response(record(**changes))):
-        with pytest.raises(ValueError):
+        with pytest.raises(WhopUnavailable):
             provider().retrieve_verified_subscription(MEMBER)
 
 
