@@ -8,10 +8,25 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+import json
 import re
 
 from app.services.agency_whop_provider import WhopProvider
 from app.services.agency_saas_whop_guardrails import VerifiedSubscriptionFacts
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict:
+    """Reject ambiguous provider facts, including nested duplicate JSON keys."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate membership JSON field")
+        result[key] = value
+    return result
+
+
+def _reject_nonfinite(value: str):
+    raise ValueError("Non-finite membership JSON value")
 
 
 def _cents(value: object) -> int:
@@ -46,7 +61,6 @@ class WhopMembershipProvider:
         # The existing authenticated GET helper is intentionally restricted to
         # one-time resources; membership retrieval is added as a separate
         # read-only endpoint without changing its existing purchase behavior.
-        import json
         import requests
         from app.services.agency_whop_provider import WhopUnavailable
         try:
@@ -58,7 +72,7 @@ class WhopMembershipProvider:
             )
             if response.status_code != 200 or len(response.content) > 262144:
                 raise WhopUnavailable("Membership lookup failed")
-            record = json.loads(response.content)
+            record = json.loads(\n                response.content, object_pairs_hook=_unique_json_object,\n                parse_constant=_reject_nonfinite,\n            )
         except (requests.RequestException, ValueError) as exc:
             raise WhopUnavailable("Membership lookup failed") from exc
         if not isinstance(record, dict) or record.get("id") != subscription_id:
