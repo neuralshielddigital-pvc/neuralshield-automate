@@ -65,3 +65,11 @@ def test_unverified_provider_evidence_is_rejected():
 def test_first_charge_cannot_unlock_next_month():
     with pytest.raises(ValueError):
         check(start=END, end=END + timedelta(days=31))
+
+
+def test_payment_after_requested_entitlement_end_is_rejected():
+    """A later payment in the provider period cannot backfill an earlier grant."""
+    requested_end = START + timedelta(days=7)
+    late_charge = replace(CHARGE, paid_at=requested_end + timedelta(days=1))
+    with pytest.raises(ValueError, match="after requested entitlement period"):
+        check(evidence=VerifiedPeriodPayment(late_charge, START, END), end=requested_end)
