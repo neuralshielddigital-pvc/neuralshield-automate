@@ -53,7 +53,7 @@ def test_authenticated_membership_normalizes_without_entitlement_write():
 ])
 def test_malformed_or_foreign_membership_rejected(changes):
     with patch("requests.get", return_value=response(record(**changes))):
-        with pytest.raises(WhopUnavailable):
+        with pytest.raises(ValueError):
             provider().retrieve_verified_subscription(MEMBER)
 
 
@@ -79,5 +79,5 @@ def test_unsafe_money_rejected(value):
 ])
 def test_ambiguous_provider_json_never_normalizes(raw):
     with patch("requests.get", return_value=Mock(status_code=200, content=raw)):
-        with pytest.raises(ValueError):
+        with pytest.raises(WhopUnavailable):
             provider().retrieve_verified_subscription(MEMBER)
