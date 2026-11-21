@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.base import Base
 from app.models.agency_commerce import AgencyCustomer, AgencyOrder, AgencyEntitlement, AgencyFulfilment
-from app.services.agency_whop_provider import WhopProvider, verify_signature
+from app.services.agency_whop_provider import WhopProvider, WhopRecurringPaymentPending, verify_signature
 from app.services.agency_whop_contract import validate_verified_whop_purchase
 from app.services.agency_whop_persistence import AgencyWhopPersistence
 
@@ -89,3 +89,24 @@ def test_refund_cannot_be_reactivated(refund_first):
         assert db.query(AgencyEntitlement).one().status == 'revoked'
         assert db.query(AgencyFulfilment).one().status == 'revoked'
     engine.dispose()
+
+
+@pytest.mark.parametrize("billing_reason", [
+    "subscription_cycle", "subscription_create", "renewal",
+])
+def test_recurring_payment_not_fulfilled_by_onetime_agency(monkeypatch, billing_reason):
+    data = payment()
+    data["billing_reason"] = billing_reason
+    p, _ = provider(monkeypatch, data)
+    with pytest.raises(WhopRecurringPaymentPending):
+        p.purchase("pay_test")
+
+
+def test_usd_currency_check_precedes_recurring_classification(monkeypatch):
+    data = payment()
+    data["currency"] = "eur"
+    data["billing_reason"] = "subscription_cycle"
+    p, _ = provider(monkeypatch, data)
+    with pytest.raises(ValueError) as exc:
+        p.purchase("pay_test")
+    assert not isinstance(exc.value, WhopRecurringPaymentPending)

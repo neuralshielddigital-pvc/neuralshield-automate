@@ -1,18 +1,39 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
+from app.core.config import settings
 from sqlalchemy.orm import Session
 
 from app.models.billing import Plan, Subscription
+from app.models.whop_saas_subscription import WhopSaasSubscriptionBinding
 from app.models.enums import SubscriptionStatus
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowRun
 
 
 UNLIMITED = -1
+# Expiring provider snapshots prevent a missed cancellation webhook from
+# granting paid limits indefinitely. A trusted reconciliation worker MUST
+# refresh provider facts regularly before this feature is activated.
+WHOP_SAAS_SNAPSHOT_TTL = timedelta(hours=24)
+
+
+def whop_snapshot_is_fresh(observed_at: datetime | None, *, now: datetime | None = None) -> bool:
+    if observed_at is None or not isinstance(observed_at, datetime):
+        return False
+    # Some drivers (including SQLite tests) return naive UTC timestamps.
+    # The backend writes timezone-aware UTC; naive values are interpreted UTC.
+    observed = observed_at.replace(tzinfo=timezone.utc) if observed_at.tzinfo is None else observed_at.astimezone(timezone.utc)
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("Current time must be timezone aware")
+    elapsed = current.astimezone(timezone.utc) - observed
+    return timedelta(0) <= elapsed <= WHOP_SAAS_SNAPSHOT_TTL
+
+
 
 PLAN_LIMITS: dict[str, dict[str, int]] = {
     "starter": {
@@ -46,7 +67,50 @@ def month_start_utc() -> datetime:
     return datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
 
+def get_verified_whop_tier(db: Session, user: User) -> str | None:
+    """Opt-in Whop SaaS entitlement lookup, isolated from Paddle.
+
+    Returns None when the feature is disabled or a Whop subscription has
+    not been bound to this user and tenant. Revoked/past-due Whop rows never
+    provide paid limits. Authentication and authoritative provider lifecycle
+    persistence must be configured before this flag may be enabled.
+    """
+    if not getattr(settings, "AGENCY_SAAS_WHOP_LIMITS_ENABLED", False):
+        return None
+    if getattr(user, "tenant_id", None) is None:
+        return None
+    rows = (
+        db.query(WhopSaasSubscriptionBinding)
+        .filter(
+            WhopSaasSubscriptionBinding.user_id == user.id,
+            WhopSaasSubscriptionBinding.tenant_id == user.tenant_id,
+        )
+        .all()
+    )
+    active = [
+        row for row in rows
+        if row.access_enabled is True
+        and row.access_state == "active"
+        and whop_snapshot_is_fresh(row.provider_observed_at)
+        and row.tier in {"starter", "pro", "business"}
+    ]
+    # Multiple active Whop subscriptions for one user require a manual
+    # resolution, not implicit highest-tier privilege escalation.
+    if len(active) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Multiple active SaaS subscriptions require support review.",
+        )
+    if not active:
+        return None
+    return "enterprise" if active[0].tier == "business" else active[0].tier
+
+
 def get_active_plan_name(db: Session, user: User) -> str:
+    whop_tier = get_verified_whop_tier(db, user)
+    if whop_tier is not None:
+        return whop_tier
+
     query = db.query(Subscription).filter(
         Subscription.user_id == user.id,
         Subscription.status == SubscriptionStatus.ACTIVE,
