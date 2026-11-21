@@ -54,3 +54,17 @@ def test_missing_persistence_dependencies_fail_before_provider_calls(repository,
         )
     subscription_provider.retrieve_verified_subscription.assert_not_called()
     payment_provider.retrieve_verified_first_charge.assert_not_called()
+
+
+@pytest.mark.parametrize("ambiguous_flag", [None, 0, 1, "false", "true", [], {}])
+def test_ambiguous_period_payment_gate_is_rejected_before_provider_calls(ambiguous_flag):
+    subscription_provider = Mock()
+    payment_provider = Mock()
+    with pytest.raises(ValueError, match="explicit boolean"):
+        reconcile_due_paid_whop_saas_subscriptions(
+            payment_provider=payment_provider,
+            provider=subscription_provider,
+            require_period_payment=ambiguous_flag,
+        )
+    subscription_provider.retrieve_verified_subscription.assert_not_called()
+    payment_provider.retrieve_verified_first_charge.assert_not_called()
