@@ -63,5 +63,5 @@ def validate_period_payment(
     paid_at = evidence.charge.paid_at.astimezone(timezone.utc)
     if paid_at < period_start:
         raise ValueError("Payment predates covered billing period")
-    if paid_at > period_end:
-        raise ValueError("Payment occurred after covered period")
+    if paid_at > requested_end:
+        raise ValueError("Payment occurred after requested entitlement period")
