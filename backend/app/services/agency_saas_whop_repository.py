@@ -101,6 +101,42 @@ class SQLAlchemyWhopSaasBindingRepository:
             self.db.rollback()
             raise
 
+    def create_binding_in_transaction(self, binding: AccountBinding) -> bool:
+        """Insert a disabled binding without committing the caller's nonce transaction.
+
+        IntegrityError must propagate so the caller rolls back both the nonce
+        redemption and binding insert. Never rollback here: that would break
+        atomicity with the authorization service.
+        """
+        if not all(
+            isinstance(value, str) and value.strip()
+            for value in (
+                binding.subscription_id, binding.provider_customer_id,
+                binding.tenant_id, binding.user_id,
+            )
+        ):
+            raise ValueError("Incomplete verified account binding")
+        tenant_id = UUID(binding.tenant_id)
+        user_id = UUID(binding.user_id)
+        existing = self._row(binding.subscription_id, lock=True)
+        if existing is not None:
+            if (
+                existing.provider_customer_id == binding.provider_customer_id
+                and existing.tenant_id == tenant_id
+                and existing.user_id == user_id
+            ):
+                return False
+            raise ValueError("Subscription already belongs to a different SaaS account")
+        self.db.add(WhopSaasSubscriptionBinding(
+            provider_subscription_id=binding.subscription_id,
+            provider_customer_id=binding.provider_customer_id,
+            tenant_id=tenant_id, user_id=user_id,
+            tier="unverified", access_state="inactive", access_enabled=False,
+            provider_observed_at=None,
+        ))
+        self.db.flush()
+        return True
+
     def list_due_subscription_ids(self, *, before: datetime, limit: int) -> list[str]:
         """Select only pre-existing identities due for provider reconciliation.
 
