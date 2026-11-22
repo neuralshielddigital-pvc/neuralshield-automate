@@ -35,6 +35,15 @@ class AtomicAuthorizationStore(Protocol):
         ...
 
 
+def _safe_identifier(value: object, *, minimum: int = 1, maximum: int = 256) -> bool:
+    return (
+        isinstance(value, str)
+        and minimum <= len(value) <= maximum
+        and value == value.strip()
+        and not any(ord(char) < 32 or ord(char) == 127 for char in value)
+    )
+
+
 class TrustedProviderProofVerifier(Protocol):
     def verify_authorization(
         self, *, authorization_response: object,
@@ -68,14 +77,14 @@ def redeem_ownership_authorization(
         principal.account_active is not True
         or principal.email_verified is not True
         or principal.tenant_authorized is not True
-        or not isinstance(session_id, str)
-        or not 16 <= len(session_id) <= 256
-        or not isinstance(pending.session_id, str)
+        or not _safe_identifier(session_id, minimum=16)
+        or not _safe_identifier(pending.session_id, minimum=16)
+        or not _safe_identifier(principal.user_id)
+        or not _safe_identifier(principal.tenant_id)
         or pending.session_id != session_id
         or pending.user_id != principal.user_id
         or pending.tenant_id != principal.tenant_id
-        or not isinstance(pending.nonce, str)
-        or not 16 <= len(pending.nonce) <= 256
+        or not _safe_identifier(pending.nonce, minimum=16)
         or not isinstance(pending.expires_at, datetime)
         or pending.expires_at.tzinfo is None
         or pending.expires_at <= instant
@@ -92,14 +101,8 @@ def redeem_ownership_authorization(
         or proof.verified_for_session is not True
         or proof.authorized_user_id != principal.user_id
         or proof.authorized_tenant_id != principal.tenant_id
-        or not isinstance(proof.subscription_id, str)
-        or not proof.subscription_id.strip()
-        or proof.subscription_id != proof.subscription_id.strip()
-        or any(ord(char) < 32 or ord(char) == 127 for char in proof.subscription_id)
-        or not isinstance(proof.customer_id, str)
-        or not proof.customer_id.strip()
-        or proof.customer_id != proof.customer_id.strip()
-        or any(ord(char) < 32 or ord(char) == 127 for char in proof.customer_id)
+        or not _safe_identifier(proof.subscription_id)
+        or not _safe_identifier(proof.customer_id)
     ):
         raise ValueError("Provider ownership verification failed")
     consumed = store.consume_if_matches(
