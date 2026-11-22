@@ -111,3 +111,12 @@ def test_membership_request_is_bounded_and_uses_server_authentication():
     assert kwargs["timeout"] == (2, 3)
     assert kwargs["allow_redirects"] is False
     assert kwargs["headers"]["Authorization"] == "Bearer test-server-key"
+
+
+@pytest.mark.parametrize("value", [
+    "1e1000000", "9" * 10000, "000000000", "19.000",
+    "+19.00", " 19.00", "19.00 ", "1E2",
+])
+def test_renewal_amount_rejects_unbounded_or_noncanonical_numbers(value):
+    with pytest.raises(ValueError, match="Invalid Whop renewal amount"):
+        _cents({"amount": value, "currency": "usd"})
