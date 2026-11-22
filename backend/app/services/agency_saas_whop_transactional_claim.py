@@ -54,6 +54,13 @@ def claim_with_persistent_authorization(
         user_id=record["user_id"], tenant_id=record["tenant_id"],
         expires_at=record["expires_at"],
     )
+    # Reject arbitrary writers before consuming a single-use nonce. A writer that
+    # commits independently can permanently consume the nonce while failing to
+    # persist the binding, breaking the ownership transaction invariant.
+    if not isinstance(repository, SQLAlchemyWhopSaasBindingRepository):
+        raise ValueError("Ownership binding requires a transactional SQLAlchemy repository")
+    if repository.db is not db:
+        raise ValueError("Ownership nonce and subscription binding must share a transaction")
     store = SQLAlchemyAtomicAuthorizationStore(db, nonce_table)
     proof = redeem_ownership_authorization(
         principal=principal, session_id=session_id, pending=pending,
@@ -63,15 +70,11 @@ def claim_with_persistent_authorization(
     # The legacy repository commits on insert, which would permanently consume
     # the nonce even if the surrounding authorization transaction later fails.
     # Use a non-committing writer on the identical SQLAlchemy session.
-    if isinstance(repository, SQLAlchemyWhopSaasBindingRepository):
-        if repository.db is not db:
-            raise ValueError("Ownership nonce and subscription binding must share a transaction")
+    class _AtomicBindingWriter:
+        def create_binding_if_absent(self, binding):
+            return repository.create_binding_in_transaction(binding)
 
-        class _AtomicBindingWriter:
-            def create_binding_if_absent(self, binding):
-                return repository.create_binding_in_transaction(binding)
-
-        repository = _AtomicBindingWriter()
+    repository = _AtomicBindingWriter()
     return bind_verified_saas_subscription(
         principal=principal, proof=proof, provider=provider,
         repository=repository, allowed_plans=allowed_plans,
