@@ -115,12 +115,12 @@ def test_non_boolean_store_result_fails_closed(context):
 @pytest.mark.parametrize("field,value", [
     ("subscription_id", "   "),
     ("subscription_id", " sub_synthetic"),
-    ("subscription_id", "sub_synthetic\\n"),
-    ("subscription_id", "sub\\x00synthetic"),
+    ("subscription_id", "sub_synthetic\n"),
+    ("subscription_id", "sub\x00synthetic"),
     ("customer_id", "  "),
     ("customer_id", "cus_synthetic "),
-    ("customer_id", "cus\\tsynthetic"),
-    ("customer_id", "cus\\x7fsynthetic"),
+    ("customer_id", "cus\tsynthetic"),
+    ("customer_id", "cus\x7fsynthetic"),
 ])
 def test_malformed_provider_identifiers_do_not_consume_nonce(context, field, value):
     context[2].proof = replace(context[2].proof, **{field: value})
