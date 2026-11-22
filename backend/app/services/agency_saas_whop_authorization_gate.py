@@ -93,9 +93,13 @@ def redeem_ownership_authorization(
         or proof.authorized_user_id != principal.user_id
         or proof.authorized_tenant_id != principal.tenant_id
         or not isinstance(proof.subscription_id, str)
-        or not proof.subscription_id
+        or not proof.subscription_id.strip()
+        or proof.subscription_id != proof.subscription_id.strip()
+        or any(ord(char) < 32 or ord(char) == 127 for char in proof.subscription_id)
         or not isinstance(proof.customer_id, str)
-        or not proof.customer_id
+        or not proof.customer_id.strip()
+        or proof.customer_id != proof.customer_id.strip()
+        or any(ord(char) < 32 or ord(char) == 127 for char in proof.customer_id)
     ):
         raise ValueError("Provider ownership verification failed")
     consumed = store.consume_if_matches(
