@@ -22,6 +22,7 @@ from app.services.agency_saas_whop_claim import (
 from app.services.agency_saas_whop_guardrails import RecurringPlan
 from app.services.agency_saas_whop_lifecycle import WhopSubscriptionProvider
 from app.services.agency_saas_whop_sql_nonce_store import SQLAlchemyAtomicAuthorizationStore
+from app.services.agency_saas_whop_repository import SQLAlchemyWhopSaasBindingRepository
 
 
 def claim_with_persistent_authorization(
@@ -59,6 +60,18 @@ def claim_with_persistent_authorization(
         authorization_response=authorization_response, verifier=verifier,
         store=store, now=instant,
     )
+    # The legacy repository commits on insert, which would permanently consume
+    # the nonce even if the surrounding authorization transaction later fails.
+    # Use a non-committing writer on the identical SQLAlchemy session.
+    if isinstance(repository, SQLAlchemyWhopSaasBindingRepository):
+        if repository.db is not db:
+            raise ValueError("Ownership nonce and subscription binding must share a transaction")
+
+        class _AtomicBindingWriter:
+            def create_binding_if_absent(self, binding):
+                return repository.create_binding_in_transaction(binding)
+
+        repository = _AtomicBindingWriter()
     return bind_verified_saas_subscription(
         principal=principal, proof=proof, provider=provider,
         repository=repository, allowed_plans=allowed_plans,
