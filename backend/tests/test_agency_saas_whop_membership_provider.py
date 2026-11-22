@@ -81,3 +81,33 @@ def test_ambiguous_provider_json_never_normalizes(raw):
     with patch("requests.get", return_value=Mock(status_code=200, content=raw)):
         with pytest.raises(WhopUnavailable):
             provider().retrieve_verified_subscription(MEMBER)
+
+
+@pytest.mark.parametrize("status", [301, 302, 401, 403, 404, 429, 500, 503])
+def test_membership_http_failure_is_fail_closed(status):
+    with patch("requests.get", return_value=Mock(status_code=status, content=b"{}")):
+        with pytest.raises(WhopUnavailable):
+            provider().retrieve_verified_subscription(MEMBER)
+
+
+def test_oversized_membership_response_is_fail_closed():
+    with patch("requests.get", return_value=Mock(status_code=200, content=b"x" * 262145)):
+        with pytest.raises(WhopUnavailable):
+            provider().retrieve_verified_subscription(MEMBER)
+
+
+def test_membership_transport_timeout_is_fail_closed():
+    import requests
+    with patch("requests.get", side_effect=requests.Timeout("synthetic timeout")):
+        with pytest.raises(WhopUnavailable):
+            provider().retrieve_verified_subscription(MEMBER)
+
+
+def test_membership_request_is_bounded_and_uses_server_authentication():
+    with patch("requests.get", return_value=response(record())) as get:
+        provider().retrieve_verified_subscription(MEMBER)
+    args, kwargs = get.call_args
+    assert args == (f"https://api.whop.com/api/v1/memberships/{MEMBER}",)
+    assert kwargs["timeout"] == (2, 3)
+    assert kwargs["allow_redirects"] is False
+    assert kwargs["headers"]["Authorization"] == "Bearer test-server-key"
