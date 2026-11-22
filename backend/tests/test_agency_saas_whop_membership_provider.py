@@ -120,3 +120,31 @@ def test_membership_request_is_bounded_and_uses_server_authentication():
 def test_renewal_amount_rejects_unbounded_or_noncanonical_numbers(value):
     with pytest.raises(ValueError, match="Invalid Whop renewal amount"):
         _cents({"amount": value, "currency": "usd"})
+
+
+@pytest.mark.parametrize("timestamp", [
+    "2099-01-01T00:00:00+00:00",
+    "2026-11-01T00:00:00",
+    "not-a-timestamp",
+])
+def test_membership_untrusted_or_future_observation_rejected(timestamp):
+    with patch("requests.get", return_value=response(record(updated_at=timestamp))):
+        with pytest.raises(ValueError, match="timestamp"):
+            provider().retrieve_verified_subscription(MEMBER)
+
+
+def test_scheduled_cancellation_never_normalizes_as_active():
+    with patch("requests.get", return_value=response(
+        record(status="active", cancel_at_period_end=True)
+    )):
+        facts = provider().retrieve_verified_subscription(MEMBER)
+    assert facts.provider_status == "canceled"
+
+
+@pytest.mark.parametrize("raw", [
+    b"[]", b"null", b"{", b'{"id": "mem_testMember", "account": []}',
+])
+def test_malformed_membership_response_never_grants_facts(raw):
+    with patch("requests.get", return_value=Mock(status_code=200, content=raw)):
+        with pytest.raises((ValueError, WhopUnavailable)):
+            provider().retrieve_verified_subscription(MEMBER)
