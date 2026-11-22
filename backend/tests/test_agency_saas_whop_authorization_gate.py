@@ -142,9 +142,9 @@ def test_oversized_provider_identifiers_fail_before_nonce_consumption(context, f
 
 @pytest.mark.parametrize("field,value", [
     ("nonce", "n" * 257),
-    ("nonce", "nonce-synthetic-0123456789\\n"),
+    ("nonce", "nonce-synthetic-0123456789\n"),
     ("nonce", " nonce-synthetic-0123456789"),
-    ("session_id", "session-synthetic-0123456789\\t"),
+    ("session_id", "session-synthetic-0123456789\t"),
     ("session_id", "session-synthetic-0123456789" + "x" * 257),
 ])
 def test_malformed_pending_identifiers_fail_before_provider(context, field, value):
