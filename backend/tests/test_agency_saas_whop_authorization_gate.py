@@ -127,3 +127,29 @@ def test_malformed_provider_identifiers_do_not_consume_nonce(context, field, val
     with pytest.raises(ValueError, match="verification"):
         redeem(context)
     assert context[3].calls == 0
+
+
+@pytest.mark.parametrize("field,value", [
+    ("subscription_id", "s" * 257),
+    ("customer_id", "c" * 257),
+])
+def test_oversized_provider_identifiers_fail_before_nonce_consumption(context, field, value):
+    context[2].proof = replace(context[2].proof, **{field: value})
+    with pytest.raises(ValueError, match="verification"):
+        redeem(context)
+    assert context[3].calls == 0
+
+
+@pytest.mark.parametrize("field,value", [
+    ("nonce", "n" * 257),
+    ("nonce", "nonce-synthetic-0123456789\\n"),
+    ("nonce", " nonce-synthetic-0123456789"),
+    ("session_id", "session-synthetic-0123456789\\t"),
+    ("session_id", "session-synthetic-0123456789" + "x" * 257),
+])
+def test_malformed_pending_identifiers_fail_before_provider(context, field, value):
+    pending = replace(context[1], **{field: value})
+    with pytest.raises(ValueError, match="session-bound"):
+        redeem(context, pending=pending)
+    assert context[2].calls == 0
+    assert context[3].calls == 0
