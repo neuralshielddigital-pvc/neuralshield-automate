@@ -67,7 +67,10 @@ def redeem_ownership_authorization(
 ) -> ProviderOwnershipProof:
     """Fail closed; never grant paid access or create subscription bindings."""
     instant = now if now is not None else datetime.now(timezone.utc)
-    if not isinstance(instant, datetime) or instant.tzinfo is None:
+    if (
+        not isinstance(instant, datetime) or instant.tzinfo is None
+        or instant.utcoffset() is None
+    ):
         raise ValueError("An aware clock is required")
     if not isinstance(principal, AuthenticatedSaasPrincipal):
         raise ValueError("Invalid SaaS principal")
@@ -87,6 +90,7 @@ def redeem_ownership_authorization(
         or not _safe_identifier(pending.nonce, minimum=16)
         or not isinstance(pending.expires_at, datetime)
         or pending.expires_at.tzinfo is None
+        or pending.expires_at.utcoffset() is None
         or pending.expires_at <= instant
     ):
         raise ValueError("Invalid or expired session-bound authorization")
