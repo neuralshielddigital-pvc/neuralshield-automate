@@ -1,6 +1,6 @@
 """Synthetic session authorization gate tests; no real Whop calls."""
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from uuid import uuid4
 
 import pytest
@@ -149,6 +149,39 @@ def test_oversized_provider_identifiers_fail_before_nonce_consumption(context, f
 ])
 def test_malformed_pending_identifiers_fail_before_provider(context, field, value):
     pending = replace(context[1], **{field: value})
+    with pytest.raises(ValueError, match="session-bound"):
+        redeem(context, pending=pending)
+    assert context[2].calls == 0
+    assert context[3].calls == 0
+
+
+class InvalidTimezone(tzinfo):
+    """tzinfo presence alone does not make a datetime timezone-aware."""
+
+    def utcoffset(self, dt):
+        return None
+
+    def dst(self, dt):
+        return None
+
+
+@pytest.mark.parametrize("invalid_clock", [
+    datetime(2026, 11, 22),
+    datetime(2026, 11, 22, tzinfo=InvalidTimezone()),
+])
+def test_invalid_redemption_clock_never_calls_provider(context, invalid_clock):
+    with pytest.raises(ValueError):
+        redeem(context, now=invalid_clock)
+    assert context[2].calls == 0
+    assert context[3].calls == 0
+
+
+@pytest.mark.parametrize("invalid_expiry", [
+    datetime(2026, 11, 22, 0, 5),
+    datetime(2026, 11, 22, 0, 5, tzinfo=InvalidTimezone()),
+])
+def test_invalid_pending_expiry_never_calls_provider(context, invalid_expiry):
+    pending = replace(context[1], expires_at=invalid_expiry)
     with pytest.raises(ValueError, match="session-bound"):
         redeem(context, pending=pending)
     assert context[2].calls == 0
