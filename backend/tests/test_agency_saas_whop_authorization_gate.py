@@ -110,3 +110,20 @@ def test_non_boolean_store_result_fails_closed(context):
     context[3].consume_if_matches = lambda **kwargs: 1
     with pytest.raises(ValueError, match="consumed"):
         redeem(context)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("subscription_id", "   "),
+    ("subscription_id", " sub_synthetic"),
+    ("subscription_id", "sub_synthetic\\n"),
+    ("subscription_id", "sub\\x00synthetic"),
+    ("customer_id", "  "),
+    ("customer_id", "cus_synthetic "),
+    ("customer_id", "cus\\tsynthetic"),
+    ("customer_id", "cus\\x7fsynthetic"),
+])
+def test_malformed_provider_identifiers_do_not_consume_nonce(context, field, value):
+    context[2].proof = replace(context[2].proof, **{field: value})
+    with pytest.raises(ValueError, match="verification"):
+        redeem(context)
+    assert context[3].calls == 0
