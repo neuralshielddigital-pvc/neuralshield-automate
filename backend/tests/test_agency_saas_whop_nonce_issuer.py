@@ -34,7 +34,7 @@ def test_nonce_is_random_persisted_and_single_use():
         assert first.expires_at == NOW + timedelta(minutes=10)
         db.commit()
     with Session(engine) as db:
-        assert db.execute(select(table.c.nonce)).scalars().all() == [first.nonce, second.nonce]
+        assert set(db.execute(select(table.c.nonce)).scalars().all()) == {first.nonce, second.nonce}
         store = SQLAlchemyAtomicAuthorizationStore(db, table)
         args = dict(nonce=first.nonce, session_id=SESSION,
                     user_id="user-1", tenant_id="tenant-1", now=NOW)
