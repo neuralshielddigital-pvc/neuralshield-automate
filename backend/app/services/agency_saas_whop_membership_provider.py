@@ -99,6 +99,8 @@ class WhopMembershipProvider:
             raise ValueError("Membership timestamp invalid")
         if record.get("billing_period_days") not in (28, 29, 30, 31):
             raise ValueError("Membership is not verified monthly")
+        if type(record.get("cancel_at_period_end")) is not bool:
+            raise ValueError("Membership cancellation flag invalid")
         if record.get("cancel_at_period_end") is True:
             # Do not silently treat scheduled cancellation as renewable access.
             status = "canceled"
