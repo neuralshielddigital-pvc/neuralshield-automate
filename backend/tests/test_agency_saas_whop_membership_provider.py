@@ -148,3 +148,10 @@ def test_malformed_membership_response_never_grants_facts(raw):
     with patch("requests.get", return_value=Mock(status_code=200, content=raw)):
         with pytest.raises((ValueError, WhopUnavailable)):
             provider().retrieve_verified_subscription(MEMBER)
+
+
+@pytest.mark.parametrize("flag", [None, "false", "true", 0, 1, [], {}])
+def test_nonboolean_cancellation_flag_is_fail_closed(flag):
+    with patch("requests.get", return_value=response(record(cancel_at_period_end=flag))):
+        with pytest.raises(ValueError, match="cancellation flag"):
+            provider().retrieve_verified_subscription(MEMBER)
