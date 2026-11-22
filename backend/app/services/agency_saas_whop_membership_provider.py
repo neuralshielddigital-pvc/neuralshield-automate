@@ -33,7 +33,7 @@ def _cents(value: object) -> int:
     if not isinstance(value, dict) or value.get("currency") != "usd":
         raise ValueError("Invalid Whop renewal currency")
     raw = value.get("amount")
-    if not isinstance(raw, str) or not re.fullmatch(r"[0-9]{1,8}(?:\\.[0-9]{1,2})?", raw):
+    if not isinstance(raw, str) or not re.fullmatch(r"[0-9]{1,8}(?:\.[0-9]{1,2})?", raw):
         # Bound numeric input before Decimal parsing: exponent notation and
         # unbounded digits must not trigger expensive conversions.
         raise ValueError("Invalid Whop renewal amount")
