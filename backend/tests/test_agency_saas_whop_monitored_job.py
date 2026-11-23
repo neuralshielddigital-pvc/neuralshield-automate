@@ -95,7 +95,7 @@ def test_invalid_candidate_batch_alerts_and_prevents_provider_access(candidate_i
     args["repository"].apply_if_current.assert_not_called()
 
 
-@pytest.mark.parametrize("limit", [0, -1, True, False, 1.5, "100", None, 1001])
+@pytest.mark.parametrize("limit", [0, -1, True, False, 1.5, "100", None, 101, 1000, 1001])
 def test_invalid_scheduler_limit_alerts_before_candidate_or_provider_access(limit):
     args = arguments()
     alert = Mock()
