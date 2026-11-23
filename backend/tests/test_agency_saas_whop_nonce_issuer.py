@@ -12,10 +12,12 @@ from app.services.agency_saas_whop_sql_nonce_store import SQLAlchemyAtomicAuthor
 
 NOW = datetime(2026, 11, 22, tzinfo=timezone.utc)
 SESSION = "session-01234567890123456789"
+USER_ID = "11111111-1111-4111-8111-111111111111"
+TENANT_ID = "22222222-2222-4222-8222-222222222222"
 
 
 def principal(**overrides):
-    fields = dict(user_id="user-1", tenant_id="tenant-1", account_active=True,
+    fields = dict(user_id=USER_ID, tenant_id=TENANT_ID, account_active=True,
                   email_verified=True, tenant_authorized=True)
     fields.update(overrides)
     return AuthenticatedSaasPrincipal(**fields)
@@ -37,7 +39,7 @@ def test_nonce_is_random_persisted_and_single_use():
         assert set(db.execute(select(table.c.nonce)).scalars().all()) == {first.nonce, second.nonce}
         store = SQLAlchemyAtomicAuthorizationStore(db, table)
         args = dict(nonce=first.nonce, session_id=SESSION,
-                    user_id="user-1", tenant_id="tenant-1", now=NOW)
+                    user_id=USER_ID, tenant_id=TENANT_ID, now=NOW)
         assert store.consume_if_matches(**args)
         assert not store.consume_if_matches(**args)
         assert not store.consume_if_matches(**{**args, "nonce": second.nonce, "tenant_id": "other"})
@@ -47,6 +49,7 @@ def test_nonce_is_random_persisted_and_single_use():
 @pytest.mark.parametrize("changes", [
     {"account_active": False}, {"email_verified": False},
     {"tenant_authorized": False}, {"tenant_id": " "},
+    {"user_id": "not-a-uuid"}, {"tenant_id": "not-a-uuid"},
 ])
 def test_ineligible_principal_cannot_create_nonce(changes):
     engine = create_engine("sqlite+pysqlite:///:memory:")
