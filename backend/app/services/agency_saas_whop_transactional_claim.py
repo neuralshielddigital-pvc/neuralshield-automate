@@ -53,7 +53,7 @@ def claim_with_persistent_authorization(
         raise ValueError("SaaS principal is not authorized to claim a subscription")
     if not _safe_identifier(session_id, minimum=16):
         raise ValueError("Invalid authenticated SaaS session")
-    if not isinstance(nonce, str) or not 16 <= len(nonce) <= 256:
+    if not _safe_identifier(nonce, minimum=16):
         raise ValueError("Invalid authorization nonce")
     if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
         raise ValueError("Aware clock required")
