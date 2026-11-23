@@ -34,7 +34,7 @@ def test_unknown_nonce_does_not_call_provider_or_create_binding():
         assert db.execute(select(table.c.nonce)).first() is None
 
 
-@pytest.mark.parametrize("nonce", ["", "short", None])
+@pytest.mark.parametrize("nonce", ["", "short", None, " nonce-01234567890123456789", "nonce-01234567890123456789\n", "nonce-01234567890123456789\x00", "x" * 257])
 def test_invalid_nonce_rejected_before_database_lookup(nonce):
     engine = create_engine("sqlite+pysqlite:///:memory:")
     table.metadata.create_all(engine)
