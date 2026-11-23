@@ -1,6 +1,9 @@
-"""Regression: provider proof must be verified before a nonce can be consumed.
+"""Regression: SQLite must fail closed when it loses nonce timezone information.
 
-Uses a disposable SQLite database; no network, payment, or production writes.
+SQLite returns naive datetimes even for timezone-aware columns. Unlike PostgreSQL,
+this fixture cannot exercise provider rejection after successful nonce validation.
+The production authorization gate must reject the naive timestamp without
+calling a verifier or consuming the nonce. No network or production writes.
 """
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -15,7 +18,7 @@ from app.services.agency_saas_whop_repository import SQLAlchemyWhopSaasBindingRe
 from app.services.agency_saas_whop_transactional_claim import claim_with_persistent_authorization
 
 
-def test_provider_verification_failure_preserves_single_use_nonce():
+def test_sqlite_naive_expiry_fails_closed_without_consuming_nonce():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     nonces.metadata.create_all(engine)
     now = datetime(2026, 11, 23, tzinfo=timezone.utc)
@@ -41,7 +44,7 @@ def test_provider_verification_failure_preserves_single_use_nonce():
             consumed_at=None,
         ))
         db.commit()
-        with pytest.raises(ValueError, match="Provider authorization rejected"):
+        with pytest.raises(ValueError, match="Invalid or expired session-bound authorization"):
             claim_with_persistent_authorization(
                 db=db, nonce_table=nonces,
                 principal=AuthenticatedSaasPrincipal(
@@ -55,7 +58,7 @@ def test_provider_verification_failure_preserves_single_use_nonce():
                 repository=SQLAlchemyWhopSaasBindingRepository(db),
                 allowed_plans={}, expected_merchant_id="biz_test", now=now,
             )
-        assert verifier.calls == 1
+        assert verifier.calls == 0
         assert db.execute(
             select(nonces.c.consumed_at).where(nonces.c.nonce == nonce)
         ).scalar_one() is None
