@@ -49,7 +49,7 @@ def run_monitored_paid_reconciliation(
     """
     if not callable(alert_on_failure):
         raise ValueError("Monitored paid reconciliation requires an alert sink")
-    if type(limit) is not int or not 1 <= limit <= 1000:
+    if type(limit) is not int or not 1 <= limit <= 100:
         # Reject unsafe scheduler configuration before reading candidates.
         # In particular, bool is an int subclass and must not pass here.
         alert_on_failure(failed_subscription_ids=(), examined=0)
