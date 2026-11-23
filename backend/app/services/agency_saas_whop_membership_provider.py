@@ -85,6 +85,13 @@ class WhopMembershipProvider:
         account = record.get("account")
         if not isinstance(account, dict) or account.get("id") != self._merchant_id:
             raise ValueError("Membership merchant mismatch")
+        # Reject malformed product/plan identifiers before downstream binding.
+        for field, prefix in (("product_id", "prod_"), ("variant_id", "plan_")):
+            value = record.get(field)
+            if not isinstance(value, str) or not re.fullmatch(
+                re.escape(prefix) + r"[A-Za-z0-9_-]{1,128}", value
+            ):
+                raise ValueError("Invalid membership product or plan identifier")
         customer_id = record.get("user_id")
         if not isinstance(customer_id, str) or not re.fullmatch(r"user_[A-Za-z0-9_-]{1,128}", customer_id):
             raise ValueError("Membership has no claimed user")
