@@ -155,3 +155,15 @@ def test_nonboolean_cancellation_flag_is_fail_closed(flag):
     with patch("requests.get", return_value=response(record(cancel_at_period_end=flag))):
         with pytest.raises(ValueError, match="cancellation flag"):
             provider().retrieve_verified_subscription(MEMBER)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("product_id", None), ("product_id", ""), ("product_id", "plan_wrong"),
+    ("product_id", "prod_../../unsafe"), ("product_id", "prod_" + "x" * 129),
+    ("variant_id", None), ("variant_id", ""), ("variant_id", "prod_wrong"),
+    ("variant_id", "plan_../../unsafe"), ("variant_id", "plan_" + "x" * 129),
+])
+def test_membership_rejects_noncanonical_product_or_plan_identifiers(field, value):
+    with patch("requests.get", return_value=response(record(**{field: value}))):
+        with pytest.raises(ValueError, match="product or plan identifier"):
+            provider().retrieve_verified_subscription(MEMBER)
