@@ -45,7 +45,7 @@ def test_invalid_nonce_rejected_before_database_lookup(nonce):
                     user_id="11111111-1111-4111-8111-111111111111",
                     tenant_id="22222222-2222-4222-8222-222222222222",
                     account_active=True, email_verified=True, tenant_authorized=True,
-                ), session_id="",
+                ), session_id="session-01234567890123456789",
                 nonce=nonce, authorization_response=None, verifier=None,
                 provider=None, repository=None, allowed_plans={},
                 expected_merchant_id="", now=NOW,
