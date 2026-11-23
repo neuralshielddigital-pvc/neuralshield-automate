@@ -174,3 +174,10 @@ def test_monthly_billing_period_requires_exact_integer(period):
     with patch("requests.get", return_value=response(record(billing_period_days=period))):
         with pytest.raises(ValueError, match="not verified monthly"):
             provider().retrieve_verified_subscription(MEMBER)
+
+
+@pytest.mark.parametrize("status", [None, "", "pending_activation", "active-but-refunded", 1, [], {}])
+def test_unknown_membership_status_rejected_at_provider_boundary(status):
+    with patch("requests.get", return_value=response(record(status=status))):
+        with pytest.raises(ValueError, match="Unrecognized membership status"):
+            provider().retrieve_verified_subscription(MEMBER)
