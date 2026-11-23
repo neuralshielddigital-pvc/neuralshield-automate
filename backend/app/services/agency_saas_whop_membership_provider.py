@@ -104,7 +104,7 @@ class WhopMembershipProvider:
             raise ValueError("Membership timestamp invalid") from exc
         if observed.tzinfo is None or observed > datetime.now(timezone.utc):
             raise ValueError("Membership timestamp invalid")
-        if record.get("billing_period_days") not in (28, 29, 30, 31):
+        if type(record.get("billing_period_days")) is not int or record["billing_period_days"] not in (28, 29, 30, 31):
             raise ValueError("Membership is not verified monthly")
         if type(record.get("cancel_at_period_end")) is not bool:
             raise ValueError("Membership cancellation flag invalid")
