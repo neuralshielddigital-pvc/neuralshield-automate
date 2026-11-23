@@ -77,3 +77,23 @@ def test_unauthorized_principal_rejected_before_nonce_database_access(override):
             verifier=None, provider=None, repository=None,
             allowed_plans={}, expected_merchant_id="biz_test", now=NOW,
         )
+
+
+@pytest.mark.parametrize("session_id", ["", "short", "session-with-newline-0123456789\n", " session-01234567890123456789"])
+def test_invalid_session_rejected_before_nonce_database_access(session_id):
+    class ForbiddenDB:
+        def execute(self, *args, **kwargs):
+            raise AssertionError("Invalid session queried nonce database")
+
+    principal = AuthenticatedSaasPrincipal(
+        user_id="11111111-1111-4111-8111-111111111111",
+        tenant_id="22222222-2222-4222-8222-222222222222",
+        account_active=True, email_verified=True, tenant_authorized=True,
+    )
+    with pytest.raises(ValueError, match="Invalid authenticated SaaS session"):
+        claim_with_persistent_authorization(
+            db=ForbiddenDB(), nonce_table=table, principal=principal,
+            session_id=session_id, nonce="nonce-01234567890123456789",
+            authorization_response={}, verifier=None, provider=None,
+            repository=None, allowed_plans={}, expected_merchant_id="biz_test", now=NOW,
+        )
