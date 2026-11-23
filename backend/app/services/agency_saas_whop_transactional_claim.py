@@ -12,7 +12,7 @@ from sqlalchemy import Table, select
 from sqlalchemy.orm import Session
 
 from app.services.agency_saas_whop_authorization_gate import (
-    PendingOwnershipAuthorization, TrustedProviderProofVerifier,
+    PendingOwnershipAuthorization, TrustedProviderProofVerifier, _safe_identifier,
     redeem_ownership_authorization,
 )
 from app.services.agency_saas_whop_claim import (
@@ -51,6 +51,8 @@ def claim_with_persistent_authorization(
         or not _valid_saas_uuid(principal.tenant_id)
     ):
         raise ValueError("SaaS principal is not authorized to claim a subscription")
+    if not _safe_identifier(session_id, minimum=16):
+        raise ValueError("Invalid authenticated SaaS session")
     if not isinstance(nonce, str) or not 16 <= len(nonce) <= 256:
         raise ValueError("Invalid authorization nonce")
     if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
