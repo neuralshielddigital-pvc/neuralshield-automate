@@ -71,6 +71,32 @@ def test_rejects_recurring_variant(monkeypatch):
         p.purchase('pay_test')
 
 
+@pytest.mark.parametrize('invalid', [None, 'missing', 'currency', 'amount', 'nan'])
+def test_adaptive_presentment_preserves_usd_settlement_checks(monkeypatch, invalid):
+    data = payment()
+    data['line_items'][0]['subtotal'] = {'currency': 'inr', 'amount': '2559.79'}
+    data['presentment_total'] = {'currency': 'inr', 'amount': '2815.77'}
+    data['presentment_tax_amount'] = {'currency': 'inr', 'amount': '255.98'}
+    if invalid == 'missing':
+        del data['presentment_total']
+    elif invalid == 'currency':
+        data['presentment_tax_amount']['currency'] = 'eur'
+    elif invalid == 'amount':
+        data['presentment_total']['amount'] = '1.00'
+    elif invalid == 'nan':
+        data['line_items'][0]['subtotal']['amount'] = 'NaN'
+    p, _ = provider(monkeypatch, data)
+    if invalid:
+        with pytest.raises(ValueError):
+            p.purchase('pay_test')
+    else:
+        facts, revoked = p.purchase('pay_test')
+        assert facts.amount_usd == '27.00' and not revoked
+        data['total'] = usd('1.00')
+        with pytest.raises(ValueError):
+            p.purchase('pay_test')
+
+
 @pytest.mark.parametrize('refund_first', [True, False])
 def test_refund_cannot_be_reactivated(refund_first):
     engine = create_engine('sqlite+pysqlite:///:memory:')
