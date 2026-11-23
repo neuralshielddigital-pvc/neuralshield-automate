@@ -108,13 +108,15 @@ class WhopMembershipProvider:
             raise ValueError("Membership is not verified monthly")
         if type(record.get("cancel_at_period_end")) is not bool:
             raise ValueError("Membership cancellation flag invalid")
-        if record.get("cancel_at_period_end") is True:
-            # Do not silently treat scheduled cancellation as renewable access.
+        raw_status = record.get("status")
+        # Validate status even for scheduled cancellations: the flag must
+        # not mask malformed or unknown provider facts.
+        if not isinstance(raw_status, str) or raw_status not in SUPPORTED_STATUSES:
+            raise ValueError("Unrecognized membership status")
+        if record["cancel_at_period_end"]:
             status = "canceled"
         else:
-            status = record.get("status")
-        if not isinstance(status, str) or status.lower() not in SUPPORTED_STATUSES:
-            raise ValueError("Unrecognized membership status")
+            status = raw_status
         return VerifiedSubscriptionFacts(
             merchant_id=self._merchant_id, product_id=record.get("product_id"),
             checkout_plan_id=record.get("variant_id"), subscription_id=subscription_id,
