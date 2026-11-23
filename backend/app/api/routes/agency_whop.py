@@ -15,7 +15,20 @@ from app.services.agency_whop_settings import configured_agency_whop_products
 router = APIRouter(prefix="/webhooks/agency/whop", tags=["agency-whop"])
 
 
+# Merchant-configured recurring lifecycle events are not one-time Agency
+# purchases. Never acknowledge them while the SaaS feature is enabled but
+# the authenticated lifecycle bridge has not been installed.
+_SAAS_MEMBERSHIP_EVENTS = frozenset({
+    "membership.activated",
+    "membership.deactivated",
+    "membership.cancel_at_period_end_changed",
+    "membership.updated",
+})
+
+
 def process_event(event, product_map, db):
+    if settings.AGENCY_SAAS_WHOP_ENABLED and event.event_type in _SAAS_MEMBERSHIP_EVENTS:
+        raise WhopRecurringPaymentPending("Recurring membership lifecycle handler not ready")
     provider = WhopProvider(settings.AGENCY_WHOP_API_KEY, settings.AGENCY_WHOP_ACCOUNT_ID)
     if event.event_type == "payment.succeeded":
         payment_id = event.data.get("id")
