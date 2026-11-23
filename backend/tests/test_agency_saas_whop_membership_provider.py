@@ -181,3 +181,19 @@ def test_unknown_membership_status_rejected_at_provider_boundary(status):
     with patch("requests.get", return_value=response(record(status=status))):
         with pytest.raises(ValueError, match="Unrecognized membership status"):
             provider().retrieve_verified_subscription(MEMBER)
+
+
+@pytest.mark.parametrize("status", [None, "", "pending_activation", "ACTIVE", 1, [], {}])
+def test_scheduled_cancellation_cannot_mask_invalid_provider_status(status):
+    with patch("requests.get", return_value=response(
+        record(status=status, cancel_at_period_end=True)
+    )):
+        with pytest.raises(ValueError, match="Unrecognized membership status"):
+            provider().retrieve_verified_subscription(MEMBER)
+
+
+def test_canonical_scheduled_cancellation_still_normalizes_to_canceled():
+    with patch("requests.get", return_value=response(
+        record(status="active", cancel_at_period_end=True)
+    )):
+        assert provider().retrieve_verified_subscription(MEMBER).provider_status == "canceled"
