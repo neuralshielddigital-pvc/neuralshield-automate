@@ -167,3 +167,10 @@ def test_membership_rejects_noncanonical_product_or_plan_identifiers(field, valu
     with patch("requests.get", return_value=response(record(**{field: value}))):
         with pytest.raises(ValueError, match="product or plan identifier"):
             provider().retrieve_verified_subscription(MEMBER)
+
+
+@pytest.mark.parametrize("period", [True, False, 30.0, 29.0, "30", None, [], {}])
+def test_monthly_billing_period_requires_exact_integer(period):
+    with patch("requests.get", return_value=response(record(billing_period_days=period))):
+        with pytest.raises(ValueError, match="not verified monthly"):
+            provider().retrieve_verified_subscription(MEMBER)
