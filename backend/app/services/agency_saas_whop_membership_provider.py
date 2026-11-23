@@ -12,7 +12,7 @@ import json
 import re
 
 from app.services.agency_whop_provider import WhopProvider
-from app.services.agency_saas_whop_guardrails import VerifiedSubscriptionFacts
+from app.services.agency_saas_whop_guardrails import SUPPORTED_STATUSES, VerifiedSubscriptionFacts
 
 
 def _unique_json_object(pairs: list[tuple[str, object]]) -> dict:
@@ -113,8 +113,8 @@ class WhopMembershipProvider:
             status = "canceled"
         else:
             status = record.get("status")
-        if not isinstance(status, str):
-            raise ValueError("Membership status missing")
+        if not isinstance(status, str) or status.lower() not in SUPPORTED_STATUSES:
+            raise ValueError("Unrecognized membership status")
         return VerifiedSubscriptionFacts(
             merchant_id=self._merchant_id, product_id=record.get("product_id"),
             checkout_plan_id=record.get("variant_id"), subscription_id=subscription_id,
