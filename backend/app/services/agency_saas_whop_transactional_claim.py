@@ -16,7 +16,7 @@ from app.services.agency_saas_whop_authorization_gate import (
     redeem_ownership_authorization,
 )
 from app.services.agency_saas_whop_claim import (
-    AuthenticatedSaasPrincipal, FirstBindingWriter,
+    AuthenticatedSaasPrincipal, FirstBindingWriter, _valid_saas_uuid,
     bind_verified_saas_subscription,
 )
 from app.services.agency_saas_whop_guardrails import RecurringPlan
@@ -40,6 +40,17 @@ def claim_with_persistent_authorization(
     transaction; otherwise atomicity is not guaranteed.
     """
     instant = now if now is not None else datetime.now(timezone.utc)
+    # Reject unauthenticated or unauthorized principals before even looking up a
+    # nonce. A caller must not use this bridge as a nonce existence oracle.
+    if (
+        not isinstance(principal, AuthenticatedSaasPrincipal)
+        or principal.account_active is not True
+        or principal.email_verified is not True
+        or principal.tenant_authorized is not True
+        or not _valid_saas_uuid(principal.user_id)
+        or not _valid_saas_uuid(principal.tenant_id)
+    ):
+        raise ValueError("SaaS principal is not authorized to claim a subscription")
     if not isinstance(nonce, str) or not 16 <= len(nonce) <= 256:
         raise ValueError("Invalid authorization nonce")
     if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
