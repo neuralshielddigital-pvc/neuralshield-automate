@@ -23,7 +23,7 @@ def test_unknown_nonce_does_not_call_provider_or_create_binding():
             claim_with_persistent_authorization(
                 db=db, nonce_table=table,
                 principal=AuthenticatedSaasPrincipal(
-                    user_id="user", tenant_id="tenant", account_active=True,
+                    user_id="11111111-1111-4111-8111-111111111111", tenant_id="22222222-2222-4222-8222-222222222222", account_active=True,
                     email_verified=True, tenant_authorized=True),
                 session_id="session-01234567890123456789",
                 nonce="nonexistent-01234567890123456789",
@@ -41,8 +41,35 @@ def test_invalid_nonce_rejected_before_database_lookup(nonce):
     with Session(engine) as db:
         with pytest.raises(ValueError, match="Invalid authorization nonce"):
             claim_with_persistent_authorization(
-                db=db, nonce_table=table, principal=None, session_id="",
+                db=db, nonce_table=table, principal=AuthenticatedSaasPrincipal(\n                    user_id="11111111-1111-4111-8111-111111111111",\n                    tenant_id="22222222-2222-4222-8222-222222222222",\n                    account_active=True, email_verified=True, tenant_authorized=True,\n                ), session_id="",
                 nonce=nonce, authorization_response=None, verifier=None,
                 provider=None, repository=None, allowed_plans={},
                 expected_merchant_id="", now=NOW,
             )
+
+
+@pytest.mark.parametrize("override", [
+    {"account_active": False}, {"email_verified": False},
+    {"tenant_authorized": False}, {"user_id": "not-a-uuid"},
+    {"tenant_id": "not-a-uuid"},
+])
+def test_unauthorized_principal_rejected_before_nonce_database_access(override):
+    from dataclasses import replace
+
+    class ForbiddenDB:
+        def execute(self, *args, **kwargs):
+            raise AssertionError("Unauthorized principal queried nonce database")
+
+    principal = replace(AuthenticatedSaasPrincipal(
+        user_id="11111111-1111-4111-8111-111111111111",
+        tenant_id="22222222-2222-4222-8222-222222222222",
+        account_active=True, email_verified=True, tenant_authorized=True,
+    ), **override)
+    with pytest.raises(ValueError, match="SaaS principal is not authorized"):
+        claim_with_persistent_authorization(
+            db=ForbiddenDB(), nonce_table=table, principal=principal,
+            session_id="session-01234567890123456789",
+            nonce="nonce-01234567890123456789", authorization_response={},
+            verifier=None, provider=None, repository=None,
+            allowed_plans={}, expected_merchant_id="biz_test", now=NOW,
+        )
