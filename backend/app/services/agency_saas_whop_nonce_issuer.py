@@ -16,7 +16,7 @@ from app.services.agency_saas_whop_authorization_gate import (
     PendingOwnershipAuthorization,
     _safe_identifier,
 )
-from app.services.agency_saas_whop_claim import AuthenticatedSaasPrincipal
+from app.services.agency_saas_whop_claim import AuthenticatedSaasPrincipal, _valid_saas_uuid
 
 
 def create_pending_ownership_authorization(
@@ -38,8 +38,8 @@ def create_pending_ownership_authorization(
         or principal.account_active is not True
         or principal.email_verified is not True
         or principal.tenant_authorized is not True
-        or not _safe_identifier(principal.user_id)
-        or not _safe_identifier(principal.tenant_id)
+        or not _valid_saas_uuid(principal.user_id)
+        or not _valid_saas_uuid(principal.tenant_id)
         or not _safe_identifier(session_id, minimum=16)
     ):
         raise ValueError("Invalid authenticated ownership authorization request")
