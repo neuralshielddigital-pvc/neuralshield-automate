@@ -93,7 +93,24 @@ class WhopProvider:
         if item.get("product_id") != payment.get("product_id") or item.get("variant_id") != variant["id"] or item.get("quantity") != 1:
             raise ValueError("Line item mismatch")
         subtotal = money(payment.get("subtotal"))
-        if money(item.get("subtotal")) != subtotal:
+        item_money = item.get("subtotal")
+        if isinstance(item_money, dict) and item_money.get("currency") != "usd":
+            # Adaptive pricing snapshots the single item in buyer currency.
+            # Reconcile it against this authenticated payment's presentment
+            # amounts; settlement remains strictly USD and catalog-checked.
+            currency = item_money.get("currency")
+            if not isinstance(currency, str) or not re.fullmatch(r"[a-z]{3}", currency):
+                raise ValueError("Invalid presentment currency")
+            def presentment(value):
+                if not isinstance(value, dict) or value.get("currency") != currency:
+                    raise ValueError("Presentment currency mismatch")
+                return money({"currency": "usd", "amount": value.get("amount")})
+            item_amount = presentment(item_money)
+            local_total = presentment(payment.get("presentment_total"))
+            local_tax = presentment(payment.get("presentment_tax_amount"))
+            if item_amount <= 0 or local_total - local_tax != item_amount:
+                raise ValueError("Presentment subtotal mismatch")
+        elif money(item_money) != subtotal:
             raise ValueError("Subtotal mismatch")
         # Reject discounted/underpaid purchases; tax is separate from catalog price.
         if money(payment.get("total")) - (money(payment["tax_amount"]) if payment.get("tax_amount") is not None else Decimal("0")) != subtotal:

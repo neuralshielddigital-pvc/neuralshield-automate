@@ -71,21 +71,58 @@ def test_rejects_recurring_variant(monkeypatch):
         p.purchase('pay_test')
 
 
+@pytest.mark.parametrize('invalid', [None, 'missing', 'currency', 'amount', 'nan'])
+def test_adaptive_presentment_preserves_usd_settlement_checks(monkeypatch, invalid):
+    data = payment()
+    data['line_items'][0]['subtotal'] = {'currency': 'inr', 'amount': '2559.79'}
+    data['presentment_total'] = {'currency': 'inr', 'amount': '2815.77'}
+    data['presentment_tax_amount'] = {'currency': 'inr', 'amount': '255.98'}
+    if invalid == 'missing':
+        del data['presentment_total']
+    elif invalid == 'currency':
+        data['presentment_tax_amount']['currency'] = 'eur'
+    elif invalid == 'amount':
+        data['presentment_total']['amount'] = '1.00'
+    elif invalid == 'nan':
+        data['line_items'][0]['subtotal']['amount'] = 'NaN'
+    p, _ = provider(monkeypatch, data)
+    if invalid:
+        with pytest.raises(ValueError):
+            p.purchase('pay_test')
+    else:
+        facts, revoked = p.purchase('pay_test')
+        assert facts.amount_usd == '27.00' and not revoked
+        data['total'] = usd('1.00')
+        with pytest.raises(ValueError):
+            p.purchase('pay_test')
+
+
 @pytest.mark.parametrize('refund_first', [True, False])
-def test_refund_cannot_be_reactivated(refund_first):
+@pytest.mark.parametrize('product,price', [
+    ('starter-toolkit', '27.00'),
+    ('pro-communications', '67.00'),
+    ('advanced-operations', '97.00'),
+    ('agency-commercial-license', '197.00'),
+])
+def test_refund_cannot_be_reactivated(refund_first, product, price):
+    from app.services.agency_member_service import AgencyMemberService
+
     engine = create_engine('sqlite+pysqlite:///:memory:')
     Base.metadata.create_all(engine, tables=[c.__table__ for c in [AgencyCustomer, AgencyOrder, AgencyEntitlement, AgencyFulfilment]])
     purchase = validate_verified_whop_purchase(independently_verified=True, payment_status='paid',
-        provider_order_id='pay_test', provider_product_id='prod_test', configured_product_map={'prod_test': 'starter-toolkit'},
-        amount='27.00', currency='USD', customer_email='buyer@example.com')
+        provider_order_id='pay_test', provider_product_id='prod_test', configured_product_map={'prod_test': product},
+        amount=price, currency='USD', customer_email='buyer@example.com')
     with Session(engine) as db:
         service = AgencyWhopPersistence(db)
         if not refund_first:
             service.record_verified_purchase(purchase)
             assert db.query(AgencyEntitlement).one().status == 'active'
+            resources = AgencyMemberService(db).resources(db.query(AgencyCustomer).one().id)
+            assert resources and {r['product_key'] for r in resources} == {product}
         service.record_verified_purchase(purchase, revoked=True)
         service.record_verified_purchase(purchase)
         assert db.query(AgencyOrder).one().status == 'revoked'
         assert db.query(AgencyEntitlement).one().status == 'revoked'
         assert db.query(AgencyFulfilment).one().status == 'revoked'
+        assert AgencyMemberService(db).resources(db.query(AgencyCustomer).one().id) == []
     engine.dispose()
