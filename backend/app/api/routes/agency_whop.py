@@ -9,13 +9,26 @@ from app.core.config import settings
 from app.services.agency_whop_contract import validate_verified_whop_purchase
 from app.services.agency_whop_event_envelope import MAX_EVENT_BYTES, parse_authenticated_whop_event
 from app.services.agency_whop_persistence import AgencyWhopPersistence
-from app.services.agency_whop_provider import WhopProvider, WhopUnavailable, verify_signature
+from app.services.agency_whop_provider import WhopProvider, WhopUnavailable, WhopRecurringPaymentPending, verify_signature
 from app.services.agency_whop_settings import configured_agency_whop_products
 
 router = APIRouter(prefix="/webhooks/agency/whop", tags=["agency-whop"])
 
 
+# Merchant-configured recurring lifecycle events are not one-time Agency
+# purchases. Never acknowledge them while the SaaS feature is enabled but
+# the authenticated lifecycle bridge has not been installed.
+_SAAS_MEMBERSHIP_EVENTS = frozenset({
+    "membership.activated",
+    "membership.deactivated",
+    "membership.cancel_at_period_end_changed",
+    "membership.updated",
+})
+
+
 def process_event(event, product_map, db):
+    if settings.AGENCY_SAAS_WHOP_ENABLED and event.event_type in _SAAS_MEMBERSHIP_EVENTS:
+        raise WhopRecurringPaymentPending("Recurring membership lifecycle handler not ready")
     provider = WhopProvider(settings.AGENCY_WHOP_API_KEY, settings.AGENCY_WHOP_ACCOUNT_ID)
     if event.event_type == "payment.succeeded":
         payment_id = event.data.get("id")
@@ -67,7 +80,9 @@ async def webhook(request: Request, db: Session = Depends(db_session)):
         raise HTTPException(400, "Invalid webhook")
     try:
         return await run_in_threadpool(process_event, event, product_map, db)
-    except (WhopUnavailable, IntegrityError):
+    except (WhopUnavailable, WhopRecurringPaymentPending, IntegrityError):
+        # A monthly payment must not be mistaken for fulfilled one-time Agency
+        # goods; retry is safer than returning a false success/terminal 422.
         raise HTTPException(503, "Retry delivery")
     except ValueError:
         raise HTTPException(422, "Purchase verification failed")

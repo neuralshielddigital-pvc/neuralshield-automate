@@ -44,6 +44,7 @@ from app.models.workflow import (
     WorkflowTrigger,
 )
 from app.models.workflow_template import WorkflowTemplate
+from app.models.whop_saas_subscription import WhopSaasSubscriptionBinding
 
 
 __all__ = [
@@ -84,6 +85,7 @@ __all__ = [
     "User",
     "UserRole",
     "WebhookEvent",
+    "WhopSaasSubscriptionBinding",
     "Workflow",
     "WorkflowAction",
     "WorkflowActionType",

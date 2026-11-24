@@ -1,0 +1,99 @@
+"""Fail-closed tests for the transactional authorization-to-binding bridge."""
+from datetime import datetime, timezone
+
+import pytest
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+
+from app.services.agency_saas_whop_claim import AuthenticatedSaasPrincipal
+from app.services.agency_saas_whop_nonce_table import whop_saas_ownership_nonces as table
+from app.services.agency_saas_whop_transactional_claim import claim_with_persistent_authorization
+
+NOW = datetime(2026, 11, 23, tzinfo=timezone.utc)
+
+
+def test_unknown_nonce_does_not_call_provider_or_create_binding():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    table.metadata.create_all(engine)
+    class Forbidden:
+        def __getattr__(self, name):
+            raise AssertionError("Unverified authorization reached external dependency")
+    with Session(engine) as db:
+        with pytest.raises(ValueError, match="Unknown authorization nonce"):
+            claim_with_persistent_authorization(
+                db=db, nonce_table=table,
+                principal=AuthenticatedSaasPrincipal(
+                    user_id="11111111-1111-4111-8111-111111111111", tenant_id="22222222-2222-4222-8222-222222222222", account_active=True,
+                    email_verified=True, tenant_authorized=True),
+                session_id="session-01234567890123456789",
+                nonce="nonexistent-01234567890123456789",
+                authorization_response={}, verifier=Forbidden(),
+                provider=Forbidden(), repository=Forbidden(),
+                allowed_plans={}, expected_merchant_id="biz_test", now=NOW,
+            )
+        assert db.execute(select(table.c.nonce)).first() is None
+
+
+@pytest.mark.parametrize("nonce", ["", "short", None, " nonce-01234567890123456789", "nonce-01234567890123456789\n", "nonce-01234567890123456789\x00", "x" * 257])
+def test_invalid_nonce_rejected_before_database_lookup(nonce):
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    table.metadata.create_all(engine)
+    with Session(engine) as db:
+        with pytest.raises(ValueError, match="Invalid authorization nonce"):
+            claim_with_persistent_authorization(
+                db=db, nonce_table=table, principal=AuthenticatedSaasPrincipal(
+                    user_id="11111111-1111-4111-8111-111111111111",
+                    tenant_id="22222222-2222-4222-8222-222222222222",
+                    account_active=True, email_verified=True, tenant_authorized=True,
+                ), session_id="session-01234567890123456789",
+                nonce=nonce, authorization_response=None, verifier=None,
+                provider=None, repository=None, allowed_plans={},
+                expected_merchant_id="", now=NOW,
+            )
+
+
+@pytest.mark.parametrize("override", [
+    {"account_active": False}, {"email_verified": False},
+    {"tenant_authorized": False}, {"user_id": "not-a-uuid"},
+    {"tenant_id": "not-a-uuid"},
+])
+def test_unauthorized_principal_rejected_before_nonce_database_access(override):
+    from dataclasses import replace
+
+    class ForbiddenDB:
+        def execute(self, *args, **kwargs):
+            raise AssertionError("Unauthorized principal queried nonce database")
+
+    principal = replace(AuthenticatedSaasPrincipal(
+        user_id="11111111-1111-4111-8111-111111111111",
+        tenant_id="22222222-2222-4222-8222-222222222222",
+        account_active=True, email_verified=True, tenant_authorized=True,
+    ), **override)
+    with pytest.raises(ValueError, match="SaaS principal is not authorized"):
+        claim_with_persistent_authorization(
+            db=ForbiddenDB(), nonce_table=table, principal=principal,
+            session_id="session-01234567890123456789",
+            nonce="nonce-01234567890123456789", authorization_response={},
+            verifier=None, provider=None, repository=None,
+            allowed_plans={}, expected_merchant_id="biz_test", now=NOW,
+        )
+
+
+@pytest.mark.parametrize("session_id", ["", "short", "session-with-newline-0123456789\n", " session-01234567890123456789"])
+def test_invalid_session_rejected_before_nonce_database_access(session_id):
+    class ForbiddenDB:
+        def execute(self, *args, **kwargs):
+            raise AssertionError("Invalid session queried nonce database")
+
+    principal = AuthenticatedSaasPrincipal(
+        user_id="11111111-1111-4111-8111-111111111111",
+        tenant_id="22222222-2222-4222-8222-222222222222",
+        account_active=True, email_verified=True, tenant_authorized=True,
+    )
+    with pytest.raises(ValueError, match="Invalid authenticated SaaS session"):
+        claim_with_persistent_authorization(
+            db=ForbiddenDB(), nonce_table=table, principal=principal,
+            session_id=session_id, nonce="nonce-01234567890123456789",
+            authorization_response={}, verifier=None, provider=None,
+            repository=None, allowed_plans={}, expected_merchant_id="biz_test", now=NOW,
+        )

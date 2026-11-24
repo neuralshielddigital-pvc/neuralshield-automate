@@ -22,6 +22,11 @@ class WhopUnavailable(Exception):
     pass
 
 
+class WhopRecurringPaymentPending(ValueError):
+    """Signed recurring payment is not fulfilled by the one-time Agency handler."""
+    pass
+
+
 def verify_signature(payload: bytes, headers, secret: str, *, now=None) -> None:
     event_id = headers.get("webhook-id", "")
     timestamp = headers.get("webhook-timestamp", "")
@@ -79,8 +84,12 @@ class WhopProvider:
         payment = self.retrieve("payments", payment_id)
         if payment.get("account_id") != self.account_id or payment.get("status") != "paid":
             raise ValueError("Wrong merchant or unpaid payment")
-        if payment.get("currency") != "usd" or payment.get("billing_reason") != "one_time":
-            raise ValueError("Not a one-time USD purchase")
+        if payment.get("currency") != "usd":
+            raise ValueError("Not a USD purchase")
+        if payment.get("billing_reason") != "one_time":
+            # This one-time Agency adapter must never grant SaaS access or
+            # acknowledge a recurring payment as successfully fulfilled.
+            raise WhopRecurringPaymentPending("Recurring payment needs SaaS handler")
         variant = self.retrieve("variants", payment.get("variant_id"))
         if (variant.get("billing_type") != "one_time" or
                 (variant.get("account") or {}).get("id") != self.account_id or
