@@ -192,13 +192,14 @@ def verify_notice(
         envelope = object_value(json.loads(raw))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise WhopError("invalid_webhook_json") from exc
-    if (
-        envelope.get("id") != event_id
-        or envelope.get("account_id") != account_id
-        or envelope.get("api_version") != "v1"
-        or envelope.get("api_version_date") != WEBHOOK_API_VERSION_DATE
+    for matches, code in (
+        (envelope.get("id") == event_id, "webhook_id_mismatch"),
+        (envelope.get("account_id") == account_id, "webhook_merchant_mismatch"),
+        (envelope.get("api_version") == "v1", "webhook_api_version_mismatch"),
+        (envelope.get("api_version_date") == WEBHOOK_API_VERSION_DATE, "webhook_api_date_mismatch"),
     ):
-        raise WhopError("webhook_envelope_mismatch")
+        if not matches:
+            raise WhopError(code)
     event_type = envelope.get("type")
     prefixes = {
         "payment.succeeded": "pay_",
