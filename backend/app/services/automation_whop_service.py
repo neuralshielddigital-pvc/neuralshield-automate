@@ -104,6 +104,9 @@ class AutomationWhopService:
             self.db.add(previous)
             self.db.commit()  # Must survive an unknown provider response.
             lock_user(self.db, user.id)
+            # Another request may have finished this intent while commit released
+            # the lock. Refresh the identity map before calling the provider.
+            self.db.refresh(previous)
         if previous.checkout_url:
             return {"provider": "whop", "checkout_url": previous.checkout_url}
         hosted = self.provider.create_checkout(TenantContext(str(user.tenant_id), str(user.id)),

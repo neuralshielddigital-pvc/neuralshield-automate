@@ -209,7 +209,11 @@ def test_migration_is_additive_and_refuses_to_destroy_checkout_records(db):
     engine = session.get_bind()
     whop_tables = [AutomationWhopEvent.__table__, Receipt.__table__, Member.__table__, Intent.__table__]
     with engine.begin() as connection:
-        Base.metadata.drop_all(connection, tables=whop_tables)
+        # metadata.drop_all also emits unrelated shared Enum DROP statements.
+        # Drop only these empty synthetic checkout tables in this test schema.
+        from sqlalchemy.schema import DropTable
+        for table in whop_tables:
+            connection.execute(DropTable(table))
         path = Path(__file__).resolve().parents[1] / "alembic/versions/20261124_0003_automation_whop_checkout.py"
         spec = importlib.util.spec_from_file_location("auto_whop_migration", path)
         migration = importlib.util.module_from_spec(spec)
