@@ -9,6 +9,7 @@ from app.api.routes.api_keys import router as api_keys_router
 from app.api.routes.api_v1 import router as api_v1_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.billing import router as billing_router
+from app.api.routes.automation_whop import router as automation_whop_router
 from app.api.routes.campaigns import router as campaigns_router
 from app.api.routes.google_integrations import router as google_integrations_router
 from app.api.routes.health import router as health_router
@@ -34,6 +35,7 @@ api_router.include_router(api_keys_router)
 api_router.include_router(api_v1_router)
 api_router.include_router(auth_router)
 api_router.include_router(billing_router)
+api_router.include_router(automation_whop_router)
 api_router.include_router(campaigns_router)
 api_router.include_router(google_integrations_router)
 api_router.include_router(health_router, tags=["health"])

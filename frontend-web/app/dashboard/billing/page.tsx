@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getPaddleInstance, initializePaddle } from "@paddle/paddle-js";
 import { ApiError } from "@/lib/api";
 import {
-  createPaddleCheckout,
+  createWhopCheckout,
   getSubscription,
+  refreshWhopSubscription,
 } from "@/lib/billing";
 import type { Subscription } from "@/lib/types";
 
@@ -121,6 +121,7 @@ export default function BillingPage() {
     setError("");
 
     try {
+      if (showRefreshState) await refreshWhopSubscription();
       const response = await getSubscription();
       setSubscription(response.subscription);
     } catch (loadError) {
@@ -200,46 +201,20 @@ export default function BillingPage() {
     setCheckoutPlan(plan.name);
 
     try {
-      const checkout = await createPaddleCheckout(plan.name);
-      const clientToken =
-        process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
-
-      if (!clientToken) {
-        throw new Error("Paddle client-side token is not configured.");
+      const key = `nsauto-checkout-${plan.name}`;
+      let commandId = window.sessionStorage.getItem(key);
+      if (!commandId) {
+        commandId = window.crypto.randomUUID();
+        window.sessionStorage.setItem(key, commandId);
       }
-
-      const paddle =
-        getPaddleInstance() ??
-        (await initializePaddle({
-          token: clientToken,
-          environment:
-            process.env.NEXT_PUBLIC_PADDLE_ENV === "sandbox"
-              ? "sandbox"
-              : "production",
-          eventCallback(event) {
-            if (event.name === "checkout.completed") {
-              setSuccess(
-                "Payment completed. Your subscription will update shortly.",
-              );
-              setCheckoutPlan(null);
-              window.setTimeout(() => {
-                void loadSubscription(true);
-              }, 1500);
-            }
-
-            if (event.name === "checkout.closed") {
-              setCheckoutPlan(null);
-            }
-          },
-        }));
-
-      if (!paddle) {
-        throw new Error("Could not initialize Paddle checkout.");
+      const checkout = await createWhopCheckout(plan.name, commandId);
+      const url = new URL(checkout.checkout_url);
+      if (url.origin !== "https://whop.com" ||
+          !/^\/checkout\/ch_[A-Za-z0-9]+\/?$/.test(url.pathname) ||
+          url.search || url.hash) {
+        throw new Error("Could not verify the secure checkout address.");
       }
-
-      paddle.Checkout.open({
-        transactionId: checkout.transaction_id,
-      });
+      window.location.assign(url.href);
     } catch (checkoutError) {
       setError(
         getErrorMessage(
@@ -265,7 +240,7 @@ export default function BillingPage() {
             <p className="mt-2 text-sm leading-6 text-steel">
               Choose the plan that matches your automation volume. Prices are
               shown in USD. Global subscriptions, taxes and checkout are
-              processed securely through Paddle.
+              processed securely through Whop.
             </p>
           </div>
 
@@ -368,6 +343,11 @@ export default function BillingPage() {
             </p>
           </div>
         </div>
+        <p className="mt-4 text-sm text-steel">
+          Manage Whop renewals and cancellation in{" "}
+          <a className="underline" href="https://whop.com/orders/" target="_blank" rel="noopener noreferrer">your Whop purchases</a>.
+          After payment, refresh your subscription here. Access starts after payment is verified.
+        </p>
       </section>
 
       <section>
@@ -379,7 +359,7 @@ export default function BillingPage() {
           </h2>
 
           <p className="mt-2 text-sm text-steel">
-            Choose a plan to start securely with Paddle. Existing active
+            Choose a plan to start securely with Whop. Existing active
             subscriptions can change plans through support without duplicate billing.
           </p>
         </div>

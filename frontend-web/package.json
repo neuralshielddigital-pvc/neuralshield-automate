@@ -13,7 +13,6 @@
     "test:playwright": "playwright test"
   },
   "dependencies": {
-    "@paddle/paddle-js": "^1.6.4",
     "lucide-react": "^1.27.0",
     "next": "16.3.2",
     "react": "19.2.8",

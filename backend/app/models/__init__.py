@@ -45,6 +45,10 @@ from app.models.workflow import (
 )
 from app.models.workflow_template import WorkflowTemplate
 from app.models.whop_saas_subscription import WhopSaasSubscriptionBinding
+from app.models.automation_whop import (
+    AutomationWhopIntent, AutomationWhopMembership,
+    AutomationWhopPayment, AutomationWhopEvent,
+)
 
 
 __all__ = [

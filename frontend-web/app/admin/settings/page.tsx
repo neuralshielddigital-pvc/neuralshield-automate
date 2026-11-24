@@ -20,7 +20,7 @@ export default function AdminSettingsPage() {
             ["Company", "NeuralShieldDigital"],
             ["Support Email", "neuralshielddigital@gmail.com"],
             ["Currency", "USD"],
-            ["Payment Provider", "Paddle"],
+            ["Payment Provider", "Whop"],
           ].map(([label, value]) => (
             <div className="metric-card" key={label}>
               <p className="text-xs font-semibold uppercase text-steel">{label}</p>

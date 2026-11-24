@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/agency-saas-whop-recurring-guardrails
+      - feature/app-whop-migration-20261124
   pull_request:
     branches:
       - main
@@ -104,4 +105,4 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements-dev.txt
       - name: Test Whop order persistence on disposable PostgreSQL
-        run: pytest -q tests/test_agency_whop_postgres_ci.py tests/test_agency_whop_postgres_migration_ci.py tests/test_agency_saas_whop_postgres_migration_ci.py
+        run: pytest -q tests/test_agency_whop_postgres_ci.py tests/test_agency_whop_postgres_migration_ci.py tests/test_agency_saas_whop_postgres_migration_ci.py tests/test_automation_whop_service.py
