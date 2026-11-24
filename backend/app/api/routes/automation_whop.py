@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import hashlib
 import time
+import logging
 from uuid import UUID
 
 import httpx
@@ -19,6 +20,7 @@ from app.services.automation_whop_transport import WhopError, WhopUnavailable, M
 from app.services.automation_whop_catalog import binding_for
 
 router = APIRouter(tags=["automation-whop"])
+logger = logging.getLogger(__name__)
 
 
 class CheckoutRequest(BaseModel):
@@ -75,7 +77,9 @@ async def webhook(request: Request, db: Session = Depends(db_session)):
     try:
         notice = verify_notice(bytes(raw), dict(request.headers), settings.AUTOMATION_WHOP_WEBHOOK_SECRET,
             settings.AUTOMATION_WHOP_ACCOUNT_ID, now=int(time.time()))
-    except WhopError:
+    except WhopError as exc:
+        # Contract codes only. Never log provider payloads, headers or secrets.
+        logger.warning("Automation Whop webhook rejected reason=%s", str(exc))
         raise HTTPException(400, "Invalid Whop webhook.") from None
     digest = hashlib.sha256(raw).hexdigest()
     try:
