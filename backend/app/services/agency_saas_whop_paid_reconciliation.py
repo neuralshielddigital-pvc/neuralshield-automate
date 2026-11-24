@@ -21,10 +21,11 @@ class VerifiedPaymentProvider(Protocol):
     def retrieve_verified_first_charge(self, subscription_id: str) -> VerifiedFirstCharge: ...
 
 
-def reconcile_due_paid_whop_saas_subscriptions(
-    *, payment_provider: VerifiedPaymentProvider, period_payment_provider=None,
-    entitlement_period_provider=None, require_period_payment=False, **kwargs
-) -> ReconciliationReport:
+def build_payment_guarded_provider(
+    *, provider, repository, expected_merchant_id, allowed_plans,
+    payment_provider: VerifiedPaymentProvider, period_payment_provider=None,
+    entitlement_period_provider=None, require_period_payment=True,
+):
     """Require independently authenticated payment evidence before access.
 
     Wrap the subscription provider rather than trusting a webhook payment ID.
@@ -49,23 +50,10 @@ def reconcile_due_paid_whop_saas_subscriptions(
         getattr(entitlement_period_provider, "retrieve_verified_entitlement_period", None)
     ):
         raise ValueError("Verified entitlement-period provider is required")
-    provider = kwargs.get("provider")
     if provider is None or not callable(
         getattr(provider, "retrieve_verified_subscription", None)
     ):
         raise ValueError("Verified Whop subscription provider is required")
-
-    repository = kwargs.get("repository")
-    candidates = kwargs.get("candidates")
-    if repository is None or not all(
-        callable(getattr(repository, method, None))
-        for method in ("get_binding", "get_decision", "apply_if_current")
-    ):
-        raise ValueError("Bound SaaS subscription repository is required")
-    if candidates is None or not callable(
-        getattr(candidates, "list_due_subscription_ids", None)
-    ):
-        raise ValueError("Bounded reconciliation candidate source is required")
 
     # Existing reconciliation performs binding checks and handles individual
     # failures. This adapter checks the first charge before the active
@@ -85,7 +73,7 @@ def reconcile_due_paid_whop_saas_subscriptions(
             if not isinstance(snapshot, VerifiedSubscriptionFacts):
                 return snapshot
             if isinstance(snapshot.provider_status, str) and snapshot.provider_status.lower() == "active":
-                binding = kwargs["repository"].get_binding(subscription_id)
+                binding = repository.get_binding(subscription_id)
                 if (binding is None or binding.subscription_id != subscription_id
                         or not isinstance(binding.tenant_id, str) or not binding.tenant_id.strip()
                         or not isinstance(binding.user_id, str) or not binding.user_id.strip()
@@ -97,10 +85,10 @@ def reconcile_due_paid_whop_saas_subscriptions(
                 preliminary = validate_recurring_snapshot(
                     snapshot=snapshot,
                     independently_verified=True,
-                    expected_merchant_id=kwargs["expected_merchant_id"],
-                    allowed_plans=kwargs["allowed_plans"],
+                    expected_merchant_id=expected_merchant_id,
+                    allowed_plans=allowed_plans,
                     bound_customer_id=binding.provider_customer_id,
-                    previous=kwargs["repository"].get_decision(subscription_id),
+                    previous=repository.get_decision(subscription_id),
                 )
                 if not preliminary.can_access:
                     return snapshot
@@ -110,10 +98,10 @@ def reconcile_due_paid_whop_saas_subscriptions(
                     charge=charge,
                     subscription_independently_verified=True,
                     charge_independently_verified=True,
-                    expected_merchant_id=kwargs["expected_merchant_id"],
-                    allowed_plans=kwargs["allowed_plans"],
+                    expected_merchant_id=expected_merchant_id,
+                    allowed_plans=allowed_plans,
                     bound_customer_id=binding.provider_customer_id,
-                    previous=kwargs["repository"].get_decision(subscription_id),
+                    previous=repository.get_decision(subscription_id),
                 )
                 if period_payment_provider is not None:
                     # Upstream adapters must authenticate both provider records.
@@ -125,13 +113,41 @@ def reconcile_due_paid_whop_saas_subscriptions(
                         evidence=evidence, independently_verified=True,
                         subscription_id=subscription_id,
                         customer_id=binding.provider_customer_id,
-                        merchant_id=kwargs["expected_merchant_id"],
+                        merchant_id=expected_merchant_id,
                         expected_amount_usd_cents=snapshot.amount_usd_cents,
                         entitlement_start=period[0], entitlement_end=period[1],
                     )
             self.verified_snapshots[subscription_id] = snapshot
             return snapshot
 
+    return PaymentGuardedProvider()
+
+
+def reconcile_due_paid_whop_saas_subscriptions(
+    *, payment_provider: VerifiedPaymentProvider, period_payment_provider=None,
+    entitlement_period_provider=None, require_period_payment=False, **kwargs
+) -> ReconciliationReport:
+    repository = kwargs.get("repository")
+    candidates = kwargs.get("candidates")
+    if repository is None or not all(
+        callable(getattr(repository, method, None))
+        for method in ("get_binding", "get_decision", "apply_if_current")
+    ):
+        raise ValueError("Bound SaaS subscription repository is required")
+    if candidates is None or not callable(
+        getattr(candidates, "list_due_subscription_ids", None)
+    ):
+        raise ValueError("Bounded reconciliation candidate source is required")
+
+    guarded = build_payment_guarded_provider(
+        provider=kwargs.get("provider"), repository=repository,
+        expected_merchant_id=kwargs["expected_merchant_id"],
+        allowed_plans=kwargs["allowed_plans"],
+        payment_provider=payment_provider,
+        period_payment_provider=period_payment_provider,
+        entitlement_period_provider=entitlement_period_provider,
+        require_period_payment=require_period_payment,
+    )
     return reconcile_due_whop_saas_subscriptions(
-        **{**kwargs, "provider": PaymentGuardedProvider()}
+        **{**kwargs, "provider": guarded}
     )
