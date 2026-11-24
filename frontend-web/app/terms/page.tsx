@@ -162,7 +162,7 @@ const sections = [
       <>
         <p>
           The Service may connect with third-party services such as Google,
-          Gmail, Google Sheets, Slack, OpenAI, Paddle, and other providers.
+          Gmail, Google Sheets, Slack, OpenAI, Whop, and other providers.
         </p>
 
         <p>
@@ -276,7 +276,7 @@ const sections = [
     content: (
       <>
         <p>
-          Paid subscriptions are processed through Paddle or another payment
+          Paid subscriptions are processed through Whop or a legacy payment
           provider that we may designate in the future.
         </p>
 

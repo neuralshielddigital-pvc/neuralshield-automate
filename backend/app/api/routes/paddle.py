@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.config import settings
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,8 @@ def create_paddle_checkout(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(db_session),
 ) -> PaddleCheckoutResponse:
+    if settings.AUTOMATION_WHOP_ENABLED:
+        raise HTTPException(410, "New subscriptions use Whop. Open Billing to subscribe.")
     result = PaddleService(db).create_transaction(
         current_user,
         payload.plan_name,

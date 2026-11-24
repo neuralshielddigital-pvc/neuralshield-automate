@@ -107,6 +107,13 @@ def get_verified_whop_tier(db: Session, user: User) -> str | None:
 
 
 def get_active_plan_name(db: Session, user: User) -> str:
+    if settings.AUTOMATION_WHOP_ENABLED:
+        from app.services.automation_whop_service import effective_membership, owned_memberships
+        member = effective_membership(db, user)
+        if member:
+            return "enterprise" if member.plan_code == "business" else member.plan_code
+        if owned_memberships(db, user):
+            return "free"
     whop_tier = get_verified_whop_tier(db, user)
     if whop_tier is not None:
         return whop_tier
@@ -141,6 +148,15 @@ def get_active_plan_name(db: Session, user: User) -> str:
 
 
 def get_plan_limits(db: Session, user: User) -> dict[str, int]:
+    if settings.AUTOMATION_WHOP_ENABLED:
+        from app.services.automation_whop_service import effective_membership, owned_memberships
+        from app.services.automation_whop_catalog import LIMITS
+        member = effective_membership(db, user)
+        if member:
+            return dict(LIMITS[member.plan_code])
+        if owned_memberships(db, user):
+            # A stale/revoked Whop projection is not legacy paid evidence.
+            return dict(FREE_LIMITS)
     plan_name = get_active_plan_name(db, user)
 
     limits = PLAN_LIMITS.get(plan_name, FREE_LIMITS)

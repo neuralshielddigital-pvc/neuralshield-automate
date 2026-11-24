@@ -42,7 +42,7 @@ const sections = [
           <li>
             <strong>Billing information:</strong> subscription plan, transaction
             identifiers, payment status, billing history, and limited payment
-            metadata supplied by payment providers such as Paddle or Digistore24.
+            metadata supplied by payment providers such as Whop (and legacy Paddle or Digistore24 records).
             We do not store full card numbers.
           </li>
           <li>
@@ -195,7 +195,7 @@ const sections = [
         <ul>
           <li>Cloud and hosting providers, including AWS and Cloudflare.</li>
           <li>Database infrastructure providers, including Neon.</li>
-          <li>Payment processors and merchants of record, including Paddle and Digistore24.</li>
+          <li>Payment processors and merchants of record, including Whop and legacy Paddle and Digistore24 providers.</li>
           <li>Email delivery providers.</li>
           <li>Integration providers, including Google and Slack.</li>
           <li>AI service providers when you use AI workflow actions.</li>

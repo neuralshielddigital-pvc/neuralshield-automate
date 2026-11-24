@@ -67,6 +67,19 @@ class Settings(BaseSettings):
     AGENCY_WHOP_PRODUCT_ADVANCED_ID: str = ""
     AGENCY_WHOP_PRODUCT_LICENSE_ID: str = ""
 
+    # Automation SaaS only. Keep disabled until checkout and webhook credentials
+    # are installed and the additive schema has been applied.
+    AUTOMATION_WHOP_ENABLED: bool = False
+    AUTOMATION_WHOP_ACCOUNT_ID: str = ""
+    AUTOMATION_WHOP_API_KEY: str = Field(default="", repr=False)
+    AUTOMATION_WHOP_WEBHOOK_SECRET: str = Field(default="", repr=False)
+    AUTOMATION_WHOP_STARTER_PRODUCT_ID: str = ""
+    AUTOMATION_WHOP_STARTER_PLAN_ID: str = ""
+    AUTOMATION_WHOP_PRO_PRODUCT_ID: str = ""
+    AUTOMATION_WHOP_PRO_PLAN_ID: str = ""
+    AUTOMATION_WHOP_BUSINESS_PRODUCT_ID: str = ""
+    AUTOMATION_WHOP_BUSINESS_PLAN_ID: str = ""
+
     PADDLE_API_KEY: str = ""
     PADDLE_WEBHOOK_SECRET: str = ""
     PADDLE_ENVIRONMENT: str = "production"

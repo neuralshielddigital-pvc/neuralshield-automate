@@ -7,18 +7,13 @@ export async function getSubscription() {
   );
 }
 
-export async function createPaddleCheckout(
-  planName: string,
-) {
-  return apiRequest<{
-    transaction_id: string;
-    provider: "paddle";
-    plan: string;
-    environment: string;
-  }>("/api/paddle/checkout", {
+export async function createWhopCheckout(planName: string, commandId: string) {
+  return apiRequest<{ checkout_url: string; provider: "whop" }>("/api/whop/checkout", {
     method: "POST",
-    body: JSON.stringify({
-      plan_name: planName,
-    }),
+    body: JSON.stringify({ plan_name: planName, command_id: commandId }),
   });
+}
+
+export async function refreshWhopSubscription() {
+  return apiRequest<{ refreshed: boolean }>("/api/whop/refresh", { method: "POST" });
 }

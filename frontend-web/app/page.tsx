@@ -959,7 +959,7 @@ export default function HomePage() {
 
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-black/60">
             Prices are shown in USD. Checkout is completed securely through
-            Paddle.
+            Whop.
           </p>
         </div>
 

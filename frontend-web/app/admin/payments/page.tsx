@@ -81,10 +81,10 @@ export default function AdminPaymentsPage() {
                           <button
                             className="btn-secondary px-3 py-1"
                             disabled
-                            title="Process refunds from the Paddle Transactions dashboard."
+                            title="Manage refunds in the original payment provider dashboard."
                             type="button"
                           >
-                            Manage in Paddle
+                            Manage with provider
                           </button>
                         </td>
                       </tr>
