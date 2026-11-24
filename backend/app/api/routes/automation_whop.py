@@ -15,7 +15,8 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.automation_whop import AutomationWhopEvent
 from app.services.automation_whop_service import AutomationWhopService, adapter, owned_memberships
-from app.services.automation_whop_transport import WhopError, WhopUnavailable, MAX_BODY, verify_notice
+from app.services.automation_whop_transport import WhopError, WhopUnavailable, MAX_BODY, verify_notice, object_value, identifier
+from app.services.automation_whop_catalog import binding_for
 
 router = APIRouter(tags=["automation-whop"])
 
@@ -90,7 +91,19 @@ async def webhook(request: Request, db: Session = Depends(db_session)):
             provider = adapter(client)
             service = AutomationWhopService(db, provider)
             now = datetime.now(timezone.utc)
-            if notice.event_type.startswith("membership."):
+            is_member = notice.event_type.startswith("membership.")
+            resource = provider.retrieve("memberships" if is_member else "payments", notice.resource_id)
+            merchant = object_value(resource.get("account")).get("id") if is_member else resource.get("account_id")
+            if merchant != settings.AUTOMATION_WHOP_ACCOUNT_ID:
+                raise WhopError("merchant_mismatch")
+            products = {binding_for(code, settings).product_id for code in ("starter", "pro", "business")}
+            if identifier(resource.get("product_id"), "prod_") not in products:
+                # A shared merchant also sells Agency and Client Acquisition.
+                # Independently identify unrelated products; never grant access.
+                db.add(AutomationWhopEvent(event_id=notice.event_id, body_hash=digest, handled_at=now))
+                db.commit()
+                return {"received": True, "ignored": True}
+            if is_member:
                 service.refresh_membership(notice.resource_id, now)
             elif notice.event_type == "payment.succeeded":
                 service.reconcile_payment(notice.resource_id, now)

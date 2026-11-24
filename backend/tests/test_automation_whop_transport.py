@@ -11,6 +11,7 @@ import pytest
 from app.services.automation_whop_contract import CheckoutIntent, CommercialError, Plan, TenantContext
 from app.services.automation_whop_transport import (
     API_VERSION_DATE,
+    WEBHOOK_API_VERSION_DATE,
     WhopAdapter,
     WhopBinding,
     WhopError,
@@ -115,7 +116,7 @@ def signed_notice(
         "type": "payment.succeeded",
         "account_id": "biz_test",
         "api_version": "v1",
-        "api_version_date": API_VERSION_DATE,
+        "api_version_date": WEBHOOK_API_VERSION_DATE,
         "data": {"id": "pay_test"},
     }
     payload.update(overrides or {})

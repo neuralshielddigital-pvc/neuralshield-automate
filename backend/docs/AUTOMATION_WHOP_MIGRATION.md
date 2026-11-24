@@ -44,7 +44,8 @@ monthly interval so legacy Pro USD149 cannot be mistaken for Pro USD59.
    or Client Acquisition key, expose secrets in chat, or put them in Git.
 5. Configure a separate webhook at
    https://api.neuralshielddigital.com/api/webhooks/automation/whop,
-   API v1 date 2026-11-07. Subscribe to payment.succeeded/payment.failed and
+   webhook API v1 date 2026-11-11. Authenticated resource reads remain pinned
+   to 2026-11-07. Subscribe to payment.succeeded/payment.failed and
    membership.activated/membership.updated/membership.deactivated where supported.
    Install its signing secret privately. Verify the actual provider payload and
    retry contract. Unknown events/resources fail closed and are not acknowledged.

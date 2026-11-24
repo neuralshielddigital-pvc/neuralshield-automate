@@ -29,6 +29,9 @@ from app.services.automation_whop_contract import (
 )
 
 API_VERSION_DATE = "2026-11-07"
+# New webhook registrations currently expose this supported envelope version.
+# Notifications are lookup hints only; authenticated resource reads stay pinned.
+WEBHOOK_API_VERSION_DATE = "2026-11-11"
 MAX_BODY = 262_144
 RETURN_URL = "https://app.neuralshielddigital.com/dashboard/billing"
 ORIGINS = {
@@ -193,7 +196,7 @@ def verify_notice(
         envelope.get("id") != event_id
         or envelope.get("account_id") != account_id
         or envelope.get("api_version") != "v1"
-        or envelope.get("api_version_date") != API_VERSION_DATE
+        or envelope.get("api_version_date") != WEBHOOK_API_VERSION_DATE
     ):
         raise WhopError("webhook_envelope_mismatch")
     event_type = envelope.get("type")

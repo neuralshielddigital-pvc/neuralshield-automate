@@ -71,6 +71,9 @@ def setup(db, monkeypatch):
                        "AUTOMATION_WHOP_STARTER_PRODUCT_ID": "prod_test",
                        "AUTOMATION_WHOP_STARTER_PLAN_ID": "plan_test"}.items():
         monkeypatch.setattr(settings, key, value)
+    for code in ("PRO", "BUSINESS"):
+        monkeypatch.setattr(settings, "AUTOMATION_WHOP_" + code + "_PRODUCT_ID", "prod_other" + code)
+        monkeypatch.setattr(settings, "AUTOMATION_WHOP_" + code + "_PLAN_ID", "plan_other" + code)
     data = period_resources()
     price = {"currency": "usd", "amount": "19.00"}
     payment = data["/api/v1/payments/pay_test"]
@@ -264,7 +267,7 @@ def test_signed_webhook_receipt_is_committed_with_access_and_replay_checked(setu
     monkeypatch.setattr(routes,"datetime",type("Clock",(),{"now":staticmethod(lambda _: NOW)}))
     def request(event_id="evt_synthetic", extra=None):
         raw = json.dumps({"id":event_id,"account_id":"biz_test","api_version":"v1",
-            "api_version_date":"2026-11-07","type":"payment.succeeded","data":{"id":"pay_test"},
+            "api_version_date":"2026-11-11","type":"payment.succeeded","data":{"id":"pay_test"},
             **(extra or {})}).encode()
         stamp = str(int(time.time()))
         signature = base64.b64encode(hmac.new(settings.AUTOMATION_WHOP_WEBHOOK_SECRET.encode(),event_id.encode()+b"."+stamp.encode()+b"."+raw,hashlib.sha256).digest()).decode()
